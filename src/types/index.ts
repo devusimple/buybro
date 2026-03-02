@@ -26,28 +26,30 @@ export interface Category {
 
 // Product types
 export interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  shortDescription: string | null;
-  price: number;
-  comparePrice: number | null;
-  costPrice: number | null;
-  sku: string;
-  barcode: string | null;
-  quantity: number;
-  weight: number | null;
-  images: string[]; // JSON array of Cloudinary URLs
-  featured: boolean;
-  status: 'active' | 'draft' | 'archived';
-  tags: string[]; // JSON array of tags
-  createdAt: number;
-  updatedAt: number;
-  category?: Category;
-  categoryId?: string;
-  variants?: ProductVariant[];
-}
+id: string;
+        createdAt: number;
+        name: string;
+        updatedAt: number;
+        description: string;
+        slug: string;
+        price: number;
+        quantity: number;
+        sku: string;
+        status: string;
+        barcode: string;
+        comparePrice: number;
+        costPrice: number;
+        featured: boolean;
+        images: string;
+        shortDescription: string;
+        tags: string;
+        weight: number;
+        categoryId?: string | undefined;
+        compareAtPrice?: number | undefined;
+        rating?: number | undefined;
+        reviewCount?: number | undefined;
+        stock?: number | undefined;
+    }
 
 export interface ProductVariant {
   id: string;
