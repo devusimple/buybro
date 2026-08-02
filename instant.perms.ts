@@ -5,10 +5,13 @@ import type { InstantRules } from "@instantdb/react"
 const rules = {
   $users: {
     allow: {
-      view: "auth.id == data.id",
+      view: "auth.id == data.id || isAdmin",
       // Users can't modify their own $users record (or self-link roles).
       // Roles are granted via the admin SDK.
       update: "false",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
     },
   },
   roles: {

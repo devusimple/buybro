@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Moon, Sun } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { CircleUserRound, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { CartSheet } from "@/components/cart-sheet"
@@ -12,6 +13,11 @@ import { useI18n } from "@/lib/i18n"
 export function SiteHeader() {
   const { resolvedTheme, setTheme } = useTheme()
   const { t, locale } = useI18n()
+  const pathname = usePathname()
+
+  if (pathname.startsWith(`/${locale}/admin`)) {
+    return null
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
@@ -41,6 +47,16 @@ export function SiteHeader() {
           <span className="hidden md:block">
             <CartSheet />
           </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("common.profile")}
+            className="hidden md:inline-flex"
+            render={<Link href={`/${locale}/profile`} />}
+            nativeButton={false}
+          >
+            <CircleUserRound />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

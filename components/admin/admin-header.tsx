@@ -13,13 +13,15 @@ export function AdminHeader() {
   const title =
     pathname === `/${locale}/admin`
       ? t("admin.dashboard")
-      : pathname.startsWith(`/${locale}/admin/products`)
-        ? t("admin.productsTitle")
-        : pathname.startsWith(`/${locale}/admin/categories`)
-          ? t("admin.categoriesTitle")
-          : pathname.startsWith(`/${locale}/admin/orders`)
-            ? t("admin.ordersTitle")
-            : t("admin.title")
+      : pathname.startsWith(`/${locale}/admin/users`)
+        ? t("admin.usersTitle")
+        : pathname.startsWith(`/${locale}/admin/products`)
+          ? t("admin.productsTitle")
+          : pathname.startsWith(`/${locale}/admin/categories`)
+            ? t("admin.categoriesTitle")
+            : pathname.startsWith(`/${locale}/admin/orders`)
+              ? t("admin.ordersTitle")
+              : t("admin.title")
 
   return (
     <header className="sticky top-0 z-10 flex h-(--header-height) items-center gap-2 border-b bg-background/80 backdrop-blur">

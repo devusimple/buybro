@@ -295,6 +295,18 @@ const bn: Messages = {
     ordersHint: "স্টোরের সব অর্ডার",
     pendingHint: "নিশ্চিতকরণের অপেক্ষায়",
     productsHint: "{count}টি ক্যাটাগরিতে",
+    users: "ইউজার",
+    usersTitle: "ইউজার",
+    usersDescription: "সবাই যারা সাইন আপ করেছেন এবং তাদের ভূমিকা দেখুন।",
+    noUsers: "কোনো ইউজার নেই",
+    noUsersHint: "স্টোরে সাইন ইন করা ইউজাররা এখানে দেখা যাবে।",
+    role: "ভূমিকা",
+    adminRole: "অ্যাডমিন",
+    memberRole: "সদস্য",
+    searchUsers: "ইউজার খুঁজুন...",
+    noSearchResults: "আপনার খোঁজের সাথে মেলে এমন কোনো ইউজার নেই।",
+    joined: "জয়েন করেছেন",
+    totalSpent: "মোট খরচ",
   },
 }
 

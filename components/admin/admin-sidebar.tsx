@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   Store,
   Tags,
+  Users,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -82,6 +83,11 @@ export function AdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
       title: t("admin.orders"),
       href: `/${locale}/admin/orders`,
       icon: ShoppingCart,
+    },
+    {
+      title: t("admin.users"),
+      href: `/${locale}/admin/users`,
+      icon: Users,
     },
   ]
 

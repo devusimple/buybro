@@ -290,6 +290,18 @@ const en = {
     ordersHint: "All-time orders in the store",
     pendingHint: "Awaiting confirmation",
     productsHint: "Across {count} categories",
+    users: "Users",
+    usersTitle: "Users",
+    usersDescription: "View everyone signed up and their roles.",
+    noUsers: "No users yet",
+    noUsersHint: "Users who sign in to the store will appear here.",
+    role: "Role",
+    adminRole: "Admin",
+    memberRole: "Member",
+    searchUsers: "Search users...",
+    noSearchResults: "No users match your search.",
+    joined: "Joined",
+    totalSpent: "Total spent",
   },
 }
 
