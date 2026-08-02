@@ -29,6 +29,11 @@ const bn: Messages = {
     tagline: "যারা আগে আপগ্রেড করেন তাদের জন্য গ্যাজেট",
     copyright: "© {year} Buybro",
   },
+  notFound: {
+    title: "পেজ পাওয়া যায়নি",
+    description: "আপনি যে পেজটি খুঁজছেন তা নেই বা সরিয়ে নেওয়া হয়েছে।",
+    backHome: "হোমে ফিরে যান",
+  },
   header: {
     toggleTheme: "থিম পরিবর্তন করুন",
   },
@@ -227,9 +232,6 @@ const bn: Messages = {
     products: "পণ্য",
     categories: "ক্যাটাগরি",
     orders: "অর্ডার",
-    accessDenied: "শুধুমাত্র অ্যাডমিন",
-    accessDeniedDescription:
-      "এই পেজ দেখতে আপনার একটি অ্যাডমিন অ্যাকাউন্ট লাগবে।",
     viewStore: "স্টোরে ফিরুন",
     totalProducts: "পণ্য",
     totalCategories: "ক্যাটাগরি",

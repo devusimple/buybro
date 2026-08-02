@@ -27,6 +27,11 @@ const en = {
     tagline: "Gadgets for people who upgrade early",
     copyright: "© {year} Buybro",
   },
+  notFound: {
+    title: "Page not found",
+    description: "The page you are looking for doesn't exist or has moved.",
+    backHome: "Back to home",
+  },
   header: {
     toggleTheme: "Toggle theme",
   },
@@ -222,8 +227,6 @@ const en = {
     products: "Products",
     categories: "Categories",
     orders: "Orders",
-    accessDenied: "Admins only",
-    accessDeniedDescription: "You need an admin account to view this page.",
     viewStore: "Back to store",
     totalProducts: "Products",
     totalCategories: "Categories",

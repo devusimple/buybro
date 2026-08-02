@@ -1,16 +1,13 @@
 "use client"
 
-import Link from "next/link"
-import { ShieldCheck, Store } from "lucide-react"
+import { notFound } from "next/navigation"
 
 import { AdminHeader } from "@/components/admin/admin-header"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { useIsAdmin } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
-import { useI18n } from "@/lib/i18n"
 
 export default function AdminLayout({
   children,
@@ -19,7 +16,6 @@ export default function AdminLayout({
 }) {
   const { user, isLoading, error } = clientDb.useAuth()
   const isAdmin = useIsAdmin()
-  const { t, locale } = useI18n()
 
   if (isLoading) {
     return (
@@ -40,29 +36,7 @@ export default function AdminLayout({
   }
 
   if (!user || !isAdmin) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-24 sm:px-6">
-        <div className="flex flex-col items-start gap-6">
-          <ShieldCheck className="size-10 text-muted-foreground" />
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight uppercase">
-              {t("admin.accessDenied")}
-            </h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("admin.accessDeniedDescription")}
-            </p>
-          </div>
-          <Button
-            render={<Link href={`/${locale}`} />}
-            nativeButton={false}
-            variant="outline"
-          >
-            <Store data-icon="inline-start" />
-            {t("admin.viewStore")}
-          </Button>
-        </div>
-      </div>
-    )
+    notFound()
   }
 
   return (
