@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import type { AdminCategory, AdminProduct } from "@/lib/admin"
+import type { AdminCategory, AdminCollection, AdminProduct } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
 
@@ -32,12 +32,14 @@ export function ProductFormDialog({
   open,
   onOpenChange,
   categories,
+  collections,
   product,
   user,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   categories: AdminCategory[]
+  collections: AdminCollection[]
   product?: AdminProduct | null
   user: User
 }) {
@@ -52,6 +54,9 @@ export function ProductFormDialog({
   const [categoryId, setCategoryId] = useState(product?.category?.id ?? "")
   const [inStock, setInStock] = useState(product?.inStock ?? true)
   const [featured, setFeatured] = useState(product?.featured ?? false)
+  const [selectedCollections, setSelectedCollections] = useState<string[]>(
+    (product?.collections ?? []).map((collection) => collection.id)
+  )
   const [file, setFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -112,6 +117,21 @@ export function ProductFormDialog({
         } else if (product.image && !file) {
           chunk.unlink({ image: product.image.id })
         }
+        const currentCollectionIds = (product.collections ?? []).map(
+          (collection) => collection.id
+        )
+        const collectionsToAdd = selectedCollections.filter(
+          (collectionId) => !currentCollectionIds.includes(collectionId)
+        )
+        const collectionsToRemove = currentCollectionIds.filter(
+          (collectionId) => !selectedCollections.includes(collectionId)
+        )
+        if (collectionsToAdd.length > 0) {
+          chunk.link({ collections: collectionsToAdd })
+        }
+        if (collectionsToRemove.length > 0) {
+          chunk.unlink({ collections: collectionsToRemove })
+        }
         await clientDb.transact(chunk)
         if (fileId && product.image) {
           await clientDb.transact(clientDb.tx.$files[product.image.id].delete())
@@ -127,6 +147,9 @@ export function ProductFormDialog({
         }
         if (fileId) {
           chunk.link({ image: fileId })
+        }
+        if (selectedCollections.length > 0) {
+          chunk.link({ collections: selectedCollections })
         }
         await clientDb.transact(chunk)
       }
@@ -239,6 +262,42 @@ export function ProductFormDialog({
                 />
                 {t("admin.featured")}
               </label>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                {t("admin.collections")}
+              </p>
+              {collections.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("admin.noCollections")}
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-4">
+                  {collections.map((collection) => {
+                    const checked = selectedCollections.includes(collection.id)
+                    return (
+                      <label
+                        key={collection.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setSelectedCollections((current) =>
+                              checked
+                                ? current.filter((id) => id !== collection.id)
+                                : [...current, collection.id]
+                            )
+                          }
+                        />
+                        {collection.name}
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">

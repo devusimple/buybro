@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react"
 import { id } from "@instantdb/react"
+import { ChevronDown } from "lucide-react"
 
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
@@ -29,10 +30,12 @@ function slugify(value: string) {
 export function CategoryFormDialog({
   open,
   onOpenChange,
+  categories,
   category,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  categories: AdminCategory[]
   category?: AdminCategory | null
 }) {
   const { t } = useI18n()
@@ -40,6 +43,7 @@ export function CategoryFormDialog({
   const [slug, setSlug] = useState(category?.slug ?? "")
   const [slugTouched, setSlugTouched] = useState(Boolean(category))
   const [description, setDescription] = useState(category?.description ?? "")
+  const [parentId, setParentId] = useState(category?.parent?.id ?? "")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,12 +64,26 @@ export function CategoryFormDialog({
         slug: slug.trim() || slugify(name),
         description: description.trim() || undefined,
       }
+      const parentOptions = categories.filter(
+        (option) => option.id !== category?.id
+      )
+      const parentOption = parentOptions.find(
+        (option) => option.id === parentId
+      )
       if (category) {
-        await clientDb.transact(
-          clientDb.tx.categories[category.id].update(payload)
-        )
+        const chunk = clientDb.tx.categories[category.id].update(payload)
+        if (parentOption) {
+          chunk.link({ parent: parentOption.id })
+        } else if (category.parent) {
+          chunk.unlink({ parent: category.parent.id })
+        }
+        await clientDb.transact(chunk)
       } else {
-        await clientDb.transact(clientDb.tx.categories[id()].create(payload))
+        const chunk = clientDb.tx.categories[id()].create(payload)
+        if (parentOption) {
+          chunk.link({ parent: parentOption.id })
+        }
+        await clientDb.transact(chunk)
       }
       onOpenChange(false)
     } catch (err) {
@@ -118,6 +136,31 @@ export function CategoryFormDialog({
                 onChange={(event) => setDescription(event.target.value)}
                 className="w-full min-w-0 resize-y border border-transparent border-b-input bg-transparent py-1 text-base outline-none focus-visible:border-b-ring md:text-sm"
               />
+            </Field>
+            <Field
+              label={t("admin.parentCategory")}
+              htmlFor="admin-category-parent"
+            >
+              <div className="relative">
+                <select
+                  id="admin-category-parent"
+                  value={parentId}
+                  onChange={(event) => setParentId(event.target.value)}
+                  className="h-10 w-full min-w-0 appearance-none border border-transparent border-b-input bg-transparent py-1 pr-6 text-base outline-none focus-visible:border-b-ring md:text-sm"
+                >
+                  <option value="">{t("admin.none")}</option>
+                  {categories
+                    .filter((option) => option.id !== category?.id)
+                    .map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.parent?.name
+                          ? `${option.parent.name} / ${option.name}`
+                          : option.name}
+                      </option>
+                    ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute top-1/2 right-0 size-4 -translate-y-1/2 text-muted-foreground" />
+              </div>
             </Field>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter className="pt-2">

@@ -6,8 +6,20 @@ import type { AppSchema } from "@/instant.schema"
 export type Product = InstaQLEntity<
   AppSchema,
   "products",
-  { image: {}; category: {} }
+  {
+    image: {}
+    category: { parent: { parent: {} } }
+    collections: {}
+  }
 >
-/* eslint-enable @typescript-eslint/no-empty-object-type */
 
-export type Category = InstaQLEntity<AppSchema, "categories">
+export type Category = InstaQLEntity<
+  AppSchema,
+  "categories",
+  { parent: {}; children: {} }
+>
+
+export type Collection = InstaQLEntity<AppSchema, "collections">
+
+export type Banner = InstaQLEntity<AppSchema, "banners", { image: {} }>
+/* eslint-enable @typescript-eslint/no-empty-object-type */

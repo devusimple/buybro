@@ -22,7 +22,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { AdminCategory, AdminProduct } from "@/lib/admin"
+import type { AdminCategory, AdminCollection, AdminProduct } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
@@ -41,12 +41,17 @@ export default function AdminProductsPage() {
       $: { order: { createdAt: "desc" } },
       category: {},
       image: {},
+      collections: {},
     },
     categories: {},
+    collections: {
+      $: { order: { sortOrder: "asc" } },
+    },
   })
 
   const products = (data?.products ?? []) as AdminProduct[]
   const categories = (data?.categories ?? []) as AdminCategory[]
+  const collections = (data?.collections ?? []) as AdminCollection[]
 
   function openAdd() {
     setEditing(null)
@@ -220,6 +225,7 @@ export default function AdminProductsPage() {
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           categories={categories}
+          collections={collections}
           product={editing}
           user={user}
         />

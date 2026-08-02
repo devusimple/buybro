@@ -30,13 +30,13 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-6 text-xs font-medium tracking-widest text-muted-foreground uppercase">
           <Link
-            href={`/${locale}`}
+            href={`/${locale}/search`}
             className="hidden transition-colors hover:text-foreground md:block"
           >
-            {t("common.shop")}
+            {t("common.search")}
           </Link>
           <Link
-            href={`/${locale}/#categories`}
+            href={`/${locale}/categories`}
             className="transition-colors hover:text-foreground"
           >
             {t("common.categories")}

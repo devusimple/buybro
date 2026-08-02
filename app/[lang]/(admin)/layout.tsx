@@ -1,7 +1,6 @@
 "use client"
 
-import { notFound } from "next/navigation"
-
+import { AdminAuth } from "@/components/admin/admin-auth"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -15,9 +14,9 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const { user, isLoading, error } = clientDb.useAuth()
-  const isAdmin = useIsAdmin()
+  const { isAdmin, isLoading: rolesLoading } = useIsAdmin()
 
-  if (isLoading) {
+  if (isLoading || rolesLoading) {
     return (
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-12 sm:px-6">
         <Skeleton className="h-8 w-40" />
@@ -36,7 +35,7 @@ export default function AdminLayout({
   }
 
   if (!user || !isAdmin) {
-    notFound()
+    return <AdminAuth />
   }
 
   return (

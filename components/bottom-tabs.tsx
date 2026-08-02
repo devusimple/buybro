@@ -1,13 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import {
-  Home,
-  LayoutGrid,
-  ShoppingBag,
-  User,
-  type LucideIcon,
-} from "lucide-react"
+import { Home, Search, ShoppingBag, User, type LucideIcon } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 import { selectCount, useCartHydrated, useCartStore } from "@/lib/cart-store"
@@ -59,10 +53,10 @@ export function BottomTabs() {
           active={pathname === `/${locale}`}
         />
         <TabItem
-          href={`/${locale}/#categories`}
-          icon={LayoutGrid}
-          label={t("common.shop")}
-          active={pathname.startsWith(`/${locale}/products`)}
+          href={`/${locale}/search`}
+          icon={Search}
+          label={t("common.search")}
+          active={pathname.startsWith(`/${locale}/search`)}
         />
         <TabItem
           href={`/${locale}/profile`}

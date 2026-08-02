@@ -34,6 +34,8 @@ export default function AdminCategoriesPage() {
   const { data, isLoading } = clientDb.useQuery({
     categories: {
       products: {},
+      parent: {},
+      children: {},
     },
   })
 
@@ -178,6 +180,7 @@ export default function AdminCategoriesPage() {
       <CategoryFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        categories={categories}
         category={editing}
       />
     </>

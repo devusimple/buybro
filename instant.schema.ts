@@ -38,6 +38,18 @@ const _schema = i.schema({
       slug: i.string().unique().indexed(),
       description: i.string().optional(),
     }),
+    collections: i.entity({
+      name: i.string().unique().indexed(),
+      slug: i.string().unique().indexed(),
+      description: i.string().optional(),
+      sortOrder: i.number().indexed().optional(),
+    }),
+    banners: i.entity({
+      title: i.string(),
+      subtitle: i.string().optional(),
+      ctaLabel: i.string().optional(),
+      ctaHref: i.string().optional(),
+    }),
     profiles: i.entity({
       ownerId: i.string().indexed(),
       displayName: i.string().optional(),
@@ -118,6 +130,42 @@ const _schema = i.schema({
         on: "categories",
         has: "many",
         label: "products",
+      },
+    },
+    categoryParent: {
+      forward: {
+        on: "categories",
+        has: "one",
+        label: "parent",
+      },
+      reverse: {
+        on: "categories",
+        has: "many",
+        label: "children",
+      },
+    },
+    productCollections: {
+      forward: {
+        on: "collections",
+        has: "many",
+        label: "products",
+      },
+      reverse: {
+        on: "products",
+        has: "many",
+        label: "collections",
+      },
+    },
+    bannerImage: {
+      forward: {
+        on: "banners",
+        has: "one",
+        label: "image",
+      },
+      reverse: {
+        on: "$files",
+        has: "many",
+        label: "banners",
       },
     },
     productImage: {

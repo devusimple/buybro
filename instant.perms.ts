@@ -87,6 +87,28 @@ const rules = {
       isAdmin: "'admin' in auth.ref('$user.roles.type')",
     },
   },
+  collections: {
+    allow: {
+      view: "true",
+      create: "isAdmin",
+      update: "isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
+  banners: {
+    allow: {
+      view: "true",
+      create: "isAdmin",
+      update: "isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
   $files: {
     allow: {
       view: "true",

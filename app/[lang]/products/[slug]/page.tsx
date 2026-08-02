@@ -4,9 +4,11 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useParams } from "next/navigation"
+import { useEffect } from "react"
 
 import { clientDb } from "@/lib/clientDb"
 import { useCartStore } from "@/lib/cart-store"
+import { addRecentProduct } from "@/lib/recent"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -29,6 +31,12 @@ export default function ProductPage() {
   })
 
   const product = data?.products?.[0]
+
+  useEffect(() => {
+    if (product) {
+      addRecentProduct(product.id)
+    }
+  }, [product])
 
   if (isLoading) {
     return (
