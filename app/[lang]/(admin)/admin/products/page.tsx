@@ -41,6 +41,8 @@ export default function AdminProductsPage() {
       $: { order: { createdAt: "desc" } },
       category: {},
       image: {},
+      gallery: {},
+      variants: {},
       collections: {},
     },
     categories: {},
@@ -222,6 +224,7 @@ export default function AdminProductsPage() {
 
       {user && (
         <ProductFormDialog
+          key={editing?.id ?? "new"}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           categories={categories}

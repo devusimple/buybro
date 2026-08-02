@@ -8,6 +8,8 @@ export type Product = InstaQLEntity<
   "products",
   {
     image: {}
+    gallery: {}
+    variants: {}
     category: { parent: { parent: {} } }
     collections: {}
   }
@@ -22,4 +24,8 @@ export type Category = InstaQLEntity<
 export type Collection = InstaQLEntity<AppSchema, "collections">
 
 export type Banner = InstaQLEntity<AppSchema, "banners", { image: {} }>
+
+export type Review = InstaQLEntity<AppSchema, "reviews">
+
+export type Variant = InstaQLEntity<AppSchema, "productVariants">
 /* eslint-enable @typescript-eslint/no-empty-object-type */

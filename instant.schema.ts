@@ -27,10 +27,28 @@ const _schema = i.schema({
       name: i.string(),
       slug: i.string().unique().indexed(),
       description: i.string(),
+      richDescription: i.string().optional(),
+      sku: i.string().optional(),
       priceCents: i.number().indexed(),
       compareAtPriceCents: i.number().indexed().optional(),
       featured: i.boolean().indexed().optional(),
       inStock: i.boolean().indexed().optional(),
+      rating: i.number().indexed().optional(),
+      reviewCount: i.number().indexed().optional(),
+      createdAt: i.number().indexed(),
+    }),
+    productVariants: i.entity({
+      title: i.string(),
+      value: i.string(),
+      sku: i.string().optional(),
+      priceCents: i.number().optional(),
+      stock: i.number().optional(),
+    }),
+    reviews: i.entity({
+      authorName: i.string(),
+      authorEmail: i.string().optional(),
+      rating: i.number().indexed(),
+      comment: i.string().optional(),
       createdAt: i.number().indexed(),
     }),
     categories: i.entity({
@@ -178,6 +196,57 @@ const _schema = i.schema({
         on: "$files",
         has: "many",
         label: "products",
+      },
+    },
+    productGallery: {
+      forward: {
+        on: "products",
+        has: "many",
+        label: "gallery",
+      },
+      reverse: {
+        on: "$files",
+        has: "many",
+        label: "productGallery",
+      },
+    },
+    productVariant: {
+      forward: {
+        on: "productVariants",
+        has: "one",
+        label: "product",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "products",
+        has: "many",
+        label: "variants",
+      },
+    },
+    reviewProduct: {
+      forward: {
+        on: "reviews",
+        has: "one",
+        label: "product",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "products",
+        has: "many",
+        label: "reviews",
+      },
+    },
+    reviewAuthor: {
+      forward: {
+        on: "reviews",
+        has: "one",
+        label: "author",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "$users",
+        has: "many",
+        label: "reviews",
       },
     },
     profileAvatar: {

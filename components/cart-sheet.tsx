@@ -89,7 +89,7 @@ export function CartSheet() {
         ) : (
           <ul className="flex flex-col gap-6 p-8 pt-2">
             {items.map((item) => (
-              <li key={item.id} className="flex gap-4">
+              <li key={item.lineId} className="flex gap-4">
                 <div className="size-20 shrink-0 overflow-hidden bg-muted">
                   {item.imageUrl ? (
                     <Image
@@ -111,6 +111,11 @@ export function CartSheet() {
                       >
                         {item.name}
                       </Link>
+                      {item.variant && (
+                        <p className="truncate text-[0.6875rem] text-muted-foreground">
+                          {item.variant}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {formatPrice(item.priceCents)}
                       </p>
@@ -119,7 +124,7 @@ export function CartSheet() {
                       variant="ghost"
                       size="icon-sm"
                       aria-label={t("cart.remove", { name: item.name })}
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(item.lineId)}
                     >
                       <Trash2 />
                     </Button>
@@ -130,7 +135,9 @@ export function CartSheet() {
                         variant="outline"
                         size="icon-sm"
                         aria-label={t("cart.decreaseQuantity")}
-                        onClick={() => setQuantity(item.id, item.quantity - 1)}
+                        onClick={() =>
+                          setQuantity(item.lineId, item.quantity - 1)
+                        }
                       >
                         <Minus />
                       </Button>
@@ -141,7 +148,9 @@ export function CartSheet() {
                         variant="outline"
                         size="icon-sm"
                         aria-label={t("cart.increaseQuantity")}
-                        onClick={() => setQuantity(item.id, item.quantity + 1)}
+                        onClick={() =>
+                          setQuantity(item.lineId, item.quantity + 1)
+                        }
                       >
                         <Plus />
                       </Button>

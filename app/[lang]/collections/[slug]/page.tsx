@@ -20,6 +20,8 @@ export default function CollectionPage() {
       $: { where: { slug } },
       products: {
         image: {},
+        gallery: {},
+        variants: {},
         category: { parent: { parent: {} } },
       },
     },

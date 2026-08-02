@@ -3,6 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 
+import { RatingStars } from "@/components/product/rating"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatPrice } from "@/lib/format"
@@ -14,6 +15,15 @@ export function ProductCard({ product }: { product: Product }) {
   const isOnSale =
     product.compareAtPriceCents != null &&
     product.compareAtPriceCents > product.priceCents
+  const discountPercent = isOnSale
+    ? Math.round(
+        ((product.compareAtPriceCents! - product.priceCents) /
+          product.compareAtPriceCents!) *
+          100
+      )
+    : 0
+  const rating = product.rating ?? 0
+  const reviewCount = product.reviewCount ?? 0
 
   return (
     <Link
@@ -40,7 +50,7 @@ export function ProductCard({ product }: { product: Product }) {
               variant="destructive"
               className="absolute top-0 left-0 bg-destructive px-2 py-1"
             >
-              {t("common.sale")}
+              {t("product.offPercent", { percent: discountPercent })}
             </Badge>
           )}
         </div>
@@ -61,6 +71,14 @@ export function ProductCard({ product }: { product: Product }) {
               </span>
             )}
           </p>
+          {reviewCount > 0 && (
+            <p className="flex items-center gap-1.5">
+              <RatingStars value={rating} size="sm" />
+              <span className="text-xs text-muted-foreground">
+                ({reviewCount})
+              </span>
+            </p>
+          )}
         </CardContent>
       </Card>
     </Link>

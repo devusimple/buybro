@@ -50,6 +50,8 @@ function SearchPage() {
     products: {
       $: { order: { createdAt: "desc" } },
       image: {},
+      gallery: {},
+      variants: {},
       category: { parent: { parent: {} } },
       collections: {},
     },

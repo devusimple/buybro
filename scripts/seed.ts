@@ -274,6 +274,7 @@ type ProductSeed = {
   inStock?: boolean
   categorySlug: string
   collectionSlugs: string[]
+  variants?: VariantSeed[]
   daysAgo: number
 }
 
@@ -299,6 +300,15 @@ const products: ProductSeed[] = [
     priceCents: 1899,
     categorySlug: "hoodies",
     collectionSlugs: ["new-arrivals", "best-sellers"],
+    variants: [
+      { title: "Color", value: "Charcoal", stock: 40 },
+      { title: "Color", value: "Olive", stock: 25 },
+      { title: "Color", value: "Sand", stock: 18 },
+      { title: "Size", value: "S", stock: 12 },
+      { title: "Size", value: "M", stock: 30 },
+      { title: "Size", value: "L", stock: 28 },
+      { title: "Size", value: "XL", stock: 14 },
+    ],
     daysAgo: 1,
   },
   {
@@ -310,6 +320,11 @@ const products: ProductSeed[] = [
     compareAtPriceCents: 3299,
     categorySlug: "power-banks",
     collectionSlugs: ["new-arrivals", "flash-sale"],
+    variants: [
+      { title: "Color", value: "Black", stock: 60 },
+      { title: "Color", value: "White", stock: 35 },
+      { title: "Color", value: "Sage", stock: 0 },
+    ],
     daysAgo: 2,
   },
   {
@@ -531,6 +546,10 @@ const products: ProductSeed[] = [
     featured: true,
     categorySlug: "mobile-accessories",
     collectionSlugs: ["trending", "flash-sale"],
+    variants: [
+      { title: "Color", value: "Midnight", priceCents: 8999, stock: 45 },
+      { title: "Color", value: "Frost", priceCents: 9499, stock: 20 },
+    ],
     daysAgo: 25,
   },
   {
@@ -716,6 +735,98 @@ function makeBannerSvg(
 </svg>`
 }
 
+type VariantSeed = {
+  title: string
+  value: string
+  priceCents?: number
+  stock?: number
+}
+
+const reviewerPool = [
+  {
+    name: "Ayesha Rahman",
+    email: "ayesha@example.com",
+    comment: "Great value for the price — exactly as described.",
+  },
+  {
+    name: "Tanvir Ahmed",
+    email: "tanvir@example.com",
+    comment: "Quality feels premium. Shipping was fast too.",
+  },
+  {
+    name: "Nusrat Jahan",
+    email: "nusrat@example.com",
+    comment: "Very happy with this purchase. Would recommend.",
+  },
+  {
+    name: "Rafiq Islam",
+    email: "rafiq@example.com",
+    comment: "Does the job well. Build quality is solid.",
+  },
+  {
+    name: "Sadia Karim",
+    email: "sadia@example.com",
+    comment: "Looks great and works perfectly. Five stars.",
+  },
+  {
+    name: "Imran Hossain",
+    email: "imran@example.com",
+    comment: "Decent product with good customer support.",
+  },
+]
+
+function makeRichDescription(name: string, description: string) {
+  return `<h2>Overview</h2><p>${escapeXml(description)}</p><ul><li>Genuine product with official warranty</li><li>Fast nationwide delivery</li><li>7-day easy returns</li></ul>`
+}
+
+function galleryFilesFor(
+  slug: string,
+  name: string,
+  categorySlug: string,
+  index: number
+) {
+  const [from, to] = palettes[index % palettes.length] ?? ["#334155", "#0f172a"]
+  const label =
+    flatCategories.find((category) => category.slug === categorySlug)?.name ??
+    ""
+  const files = [
+    {
+      path: `products/${slug}.svg`,
+      svg: makeSvg(name.toUpperCase(), label.toUpperCase(), from, to),
+    },
+  ]
+  for (let i = 1; i <= 2; i++) {
+    const [f, t] = palettes[(index + i) % palettes.length] ?? [from, to]
+    files.push({
+      path: `products/${slug}/gallery-${i}.svg`,
+      svg: makeSvg(
+        name.toUpperCase(),
+        `${label.toUpperCase()} · VIEW ${i + 1}`,
+        f,
+        t
+      ),
+    })
+  }
+  return files
+}
+
+function reviewsFor(index: number, baseDate: number) {
+  const count = (index % 3) + 1
+  const reviews = []
+  for (let i = 0; i < count; i++) {
+    const reviewer = reviewerPool[(index + i) % reviewerPool.length]
+    const rating = [5, 4, 5, 3, 5, 4][(index + i) % 6]
+    reviews.push({
+      authorName: reviewer.name,
+      authorEmail: reviewer.email,
+      rating,
+      comment: reviewer.comment,
+      createdAt: baseDate - (count - 1 - i) * DAY,
+    })
+  }
+  return reviews
+}
+
 // Legacy flat catalog replaced by the new taxonomy.
 const legacyCategorySlugs = [
   "audio",
@@ -840,11 +951,92 @@ async function main() {
 
   for (const [index, product] of products.entries()) {
     const existing = await db.query({
-      products: { $: { where: { slug: product.slug } } },
+      products: {
+        $: { where: { slug: product.slug } },
+        gallery: {},
+        variants: {},
+        reviews: {},
+      },
     })
-    if (existing.products.length > 0) {
+    const record = existing.products[0]
+    const createdAt = now - product.daysAgo * DAY
+    const reviews = reviewsFor(index, createdAt)
+    const rating =
+      reviews.length > 0
+        ? Math.round(
+            (reviews.reduce((sum, review) => sum + review.rating, 0) /
+              reviews.length) *
+              10
+          ) / 10
+        : 0
+    const richDescription = makeRichDescription(
+      product.name,
+      product.description
+    )
+    const galleryFiles = galleryFilesFor(
+      product.slug,
+      product.name,
+      product.categorySlug,
+      index
+    )
+
+    if (record) {
       skipped += 1
-      console.log(`  - ${product.name} (exists)`)
+      console.log(`  - ${product.name} (exists, syncing extras)`)
+
+      await db.transact(
+        db.tx.products[record.id].update({
+          richDescription,
+          rating,
+          reviewCount: reviews.length,
+        })
+      )
+
+      const existingPaths = new Set((record.gallery ?? []).map((f) => f.path))
+      for (const galleryFile of galleryFiles.slice(1)) {
+        if (existingPaths.has(galleryFile.path)) continue
+        const { data: file } = await db.storage.uploadFile(
+          galleryFile.path,
+          Buffer.from(galleryFile.svg),
+          { contentType: "image/svg+xml" }
+        )
+        await db.transact(db.tx.products[record.id].link({ gallery: file.id }))
+      }
+
+      for (const variant of record.variants ?? []) {
+        await db.transact(db.tx.productVariants[variant.id].delete())
+      }
+      for (const variant of product.variants ?? []) {
+        const variantId = id()
+        await db.transact(
+          db.tx.productVariants[variantId]
+            .create({
+              title: variant.title,
+              value: variant.value,
+              priceCents: variant.priceCents,
+              stock: variant.stock,
+            })
+            .link({ product: record.id })
+        )
+      }
+
+      for (const review of record.reviews ?? []) {
+        await db.transact(db.tx.reviews[review.id].delete())
+      }
+      for (const review of reviews) {
+        const reviewId = id()
+        await db.transact(
+          db.tx.reviews[reviewId]
+            .create({
+              authorName: review.authorName,
+              authorEmail: review.authorEmail,
+              rating: review.rating,
+              comment: review.comment,
+              createdAt: review.createdAt,
+            })
+            .link({ product: record.id })
+        )
+      }
       continue
     }
 
@@ -856,49 +1048,81 @@ async function main() {
       continue
     }
 
-    const [from, to] = palettes[index % palettes.length] ?? [
-      "#334155",
-      "#0f172a",
-    ]
-    const categoryName =
-      flatCategories.find((c) => c.slug === product.categorySlug)?.name ?? ""
-    const svg = makeSvg(
-      product.name.toUpperCase(),
-      categoryName.toUpperCase(),
-      from,
-      to
-    )
-
-    const filePath = `products/${product.slug}.svg`
+    const thumbnail = galleryFiles[0]
     const { data: file } = await db.storage.uploadFile(
-      filePath,
-      Buffer.from(svg),
+      thumbnail.path,
+      Buffer.from(thumbnail.svg),
       { contentType: "image/svg+xml" }
     )
+
+    const galleryFileIds: string[] = []
+    for (const galleryFile of galleryFiles.slice(1)) {
+      const { data: galleryFileData } = await db.storage.uploadFile(
+        galleryFile.path,
+        Buffer.from(galleryFile.svg),
+        { contentType: "image/svg+xml" }
+      )
+      galleryFileIds.push(galleryFileData.id)
+    }
 
     const productId = id()
     const collectionIdsToLink = product.collectionSlugs
       .map((slug) => collectionIds.get(slug))
       .filter((slug): slug is string => Boolean(slug))
 
-    await db.transact(
-      db.tx.products[productId]
-        .create({
-          name: product.name,
-          slug: product.slug,
-          description: product.description,
-          priceCents: product.priceCents,
-          compareAtPriceCents: product.compareAtPriceCents,
-          featured: product.featured ?? false,
-          inStock: product.inStock ?? true,
-          createdAt: now - product.daysAgo * DAY,
-        })
-        .link({
-          image: file.id,
-          category: categoryId,
-          collections: collectionIdsToLink,
-        })
-    )
+    const chunk = db.tx.products[productId]
+      .create({
+        name: product.name,
+        slug: product.slug,
+        description: product.description,
+        richDescription,
+        priceCents: product.priceCents,
+        compareAtPriceCents: product.compareAtPriceCents,
+        featured: product.featured ?? false,
+        inStock: product.inStock ?? true,
+        rating,
+        reviewCount: reviews.length,
+        createdAt,
+      })
+      .link({
+        image: file.id,
+        category: categoryId,
+        collections: collectionIdsToLink,
+      })
+    if (galleryFileIds.length > 0) {
+      chunk.link({ gallery: galleryFileIds })
+    }
+    await db.transact(chunk)
+
+    for (const variant of product.variants ?? []) {
+      const variantId = id()
+      await db.transact(
+        db.tx.productVariants[variantId]
+          .create({
+            title: variant.title,
+            value: variant.value,
+            priceCents: variant.priceCents,
+            stock: variant.stock,
+          })
+          .link({ product: productId })
+      )
+    }
+
+    for (const review of reviews) {
+      const reviewId = id()
+      await db.transact(
+        db.tx.reviews[reviewId]
+          .create({
+            authorName: review.authorName,
+            authorEmail: review.authorEmail,
+            rating: review.rating,
+            comment: review.comment,
+            createdAt: review.createdAt,
+          })
+          .link({ product: productId })
+      )
+    }
+
     created += 1
     console.log(`  + ${product.name}`)
   }

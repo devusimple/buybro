@@ -76,6 +76,28 @@ const rules = {
       isAdmin: "'admin' in auth.ref('$user.roles.type')",
     },
   },
+  productVariants: {
+    allow: {
+      view: "true",
+      create: "isAdmin",
+      update: "isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
+  reviews: {
+    allow: {
+      view: "true",
+      create: "true",
+      update: "isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
   categories: {
     allow: {
       view: "true",

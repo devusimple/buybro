@@ -43,6 +43,8 @@ export default function CategoryPage() {
     },
     products: {
       image: {},
+      gallery: {},
+      variants: {},
       category: { parent: { parent: {} } },
       collections: {},
     },

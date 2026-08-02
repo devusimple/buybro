@@ -2,9 +2,10 @@
 
 import { useRef, useState, type FormEvent } from "react"
 import Image from "next/image"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Plus, Trash2, X } from "lucide-react"
 import { id, type User } from "@instantdb/react"
 
+import { RichTextEditor } from "@/components/admin/rich-text-editor"
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input"
 import type { AdminCategory, AdminCollection, AdminProduct } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
+import { sanitizeHtml } from "@/lib/sanitize"
 
 function slugify(value: string) {
   return value
@@ -26,6 +28,20 @@ function slugify(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+}
+
+type VariantRow = {
+  key: string
+  id?: string
+  title: string
+  value: string
+  priceCents: string
+  stock: string
+}
+
+type GalleryUpload = {
+  file: File
+  url: string
 }
 
 export function ProductFormDialog({
@@ -48,8 +64,17 @@ export function ProductFormDialog({
   const [slug, setSlug] = useState(product?.slug ?? "")
   const [slugTouched, setSlugTouched] = useState(Boolean(product))
   const [description, setDescription] = useState(product?.description ?? "")
+  const [richDescription, setRichDescription] = useState(
+    product?.richDescription ?? ""
+  )
+  const [sku, setSku] = useState(product?.sku ?? "")
   const [price, setPrice] = useState(
     product ? String(product.priceCents / 100) : ""
+  )
+  const [compareAtPrice, setCompareAtPrice] = useState(
+    product?.compareAtPriceCents != null
+      ? String(product.compareAtPriceCents / 100)
+      : ""
   )
   const [categoryId, setCategoryId] = useState(product?.category?.id ?? "")
   const [inStock, setInStock] = useState(product?.inStock ?? true)
@@ -58,11 +83,30 @@ export function ProductFormDialog({
     (product?.collections ?? []).map((collection) => collection.id)
   )
   const [file, setFile] = useState<File | null>(null)
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null)
+  const [galleryUploads, setGalleryUploads] = useState<GalleryUpload[]>([])
+  const [galleryRemoved, setGalleryRemoved] = useState<string[]>([])
+  const [variants, setVariants] = useState<VariantRow[]>(() =>
+    (product?.variants ?? []).map((variant) => ({
+      key: variant.id,
+      id: variant.id,
+      title: variant.title,
+      value: variant.value,
+      priceCents:
+        variant.priceCents != null ? String(variant.priceCents / 100) : "",
+      stock: variant.stock != null ? String(variant.stock) : "",
+    }))
+  )
+  const nextVariantKey = useRef(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
 
   const currentImage = product?.image
+  const existingGallery = (product?.gallery ?? []).filter(
+    (image) => !galleryRemoved.includes(image.id)
+  )
 
   function handleNameChange(value: string) {
     setName(value)
@@ -71,10 +115,67 @@ export function ProductFormDialog({
     }
   }
 
+  function updateVariant(key: string, patch: Partial<VariantRow>) {
+    setVariants((current) =>
+      current.map((row) => (row.key === key ? { ...row, ...patch } : row))
+    )
+  }
+
+  function addVariant() {
+    setVariants((current) => [
+      ...current,
+      {
+        key: `new-${nextVariantKey.current++}`,
+        title: "",
+        value: "",
+        priceCents: "",
+        stock: "",
+      },
+    ])
+  }
+
+  function removeVariant(key: string) {
+    setVariants((current) => current.filter((row) => row.key !== key))
+  }
+
+  function handleGalleryFiles(selected: FileList | null) {
+    const uploads = Array.from(selected ?? []).map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+    }))
+    if (uploads.length > 0) {
+      setGalleryUploads((current) => [...current, ...uploads])
+    }
+    if (galleryRef.current) {
+      galleryRef.current.value = ""
+    }
+  }
+
+  function removeGalleryUpload(index: number) {
+    setGalleryUploads((current) => {
+      const upload = current[index]
+      if (upload) {
+        URL.revokeObjectURL(upload.url)
+      }
+      return current.filter((_, itemIndex) => itemIndex !== index)
+    })
+  }
+
   function handleOpenChange(next: boolean) {
     if (!next) {
       setError(null)
+      if (thumbUrl) {
+        URL.revokeObjectURL(thumbUrl)
+        setThumbUrl(null)
+      }
       setFile(null)
+      setGalleryUploads((current) => {
+        for (const upload of current) {
+          URL.revokeObjectURL(upload.url)
+        }
+        return []
+      })
+      setGalleryRemoved([])
     }
     onOpenChange(next)
   }
@@ -85,25 +186,45 @@ export function ProductFormDialog({
     setError(null)
     try {
       const priceCents = Math.round(parseFloat(price || "0") * 100)
+      const compareAt = parseFloat(compareAtPrice)
       const payload = {
         name: name.trim(),
         slug: slug.trim() || slugify(name),
         description: description.trim(),
+        richDescription: sanitizeHtml(richDescription),
+        sku: sku.trim() || undefined,
         priceCents,
+        compareAtPriceCents:
+          Number.isFinite(compareAt) && compareAt > 0
+            ? Math.round(compareAt * 100)
+            : undefined,
         inStock,
         featured,
       }
 
-      let fileId: string | undefined
+      let thumbnailId: string | undefined
       if (file) {
-        const path = `${user.id}/admin/products/${Date.now()}-${file.name}`
+        const path = `${user.id}/admin/products/thumb-${Date.now()}-${file.name}`
         const { data: fileData } = await clientDb.storage.uploadFile(
           path,
           file,
           { contentType: file.type }
         )
-        fileId = fileData.id
+        thumbnailId = fileData.id
       }
+
+      const galleryIds: string[] = []
+      for (const upload of galleryUploads) {
+        const path = `${user.id}/admin/products/gallery-${Date.now()}-${upload.file.name}`
+        const { data: fileData } = await clientDb.storage.uploadFile(
+          path,
+          upload.file,
+          { contentType: upload.file.type }
+        )
+        galleryIds.push(fileData.id)
+      }
+
+      const txs: unknown[] = []
 
       if (product) {
         const chunk = clientDb.tx.products[product.id].update(payload)
@@ -112,10 +233,14 @@ export function ProductFormDialog({
         } else if (product.category) {
           chunk.unlink({ category: product.category.id })
         }
-        if (fileId) {
-          chunk.link({ image: fileId })
-        } else if (product.image && !file) {
-          chunk.unlink({ image: product.image.id })
+        if (thumbnailId) {
+          chunk.link({ image: thumbnailId })
+        }
+        if (galleryIds.length > 0) {
+          chunk.link({ gallery: galleryIds })
+        }
+        if (galleryRemoved.length > 0) {
+          chunk.unlink({ gallery: galleryRemoved })
         }
         const currentCollectionIds = (product.collections ?? []).map(
           (collection) => collection.id
@@ -132,9 +257,23 @@ export function ProductFormDialog({
         if (collectionsToRemove.length > 0) {
           chunk.unlink({ collections: collectionsToRemove })
         }
-        await clientDb.transact(chunk)
-        if (fileId && product.image) {
-          await clientDb.transact(clientDb.tx.$files[product.image.id].delete())
+        txs.push(chunk)
+        if (thumbnailId && product.image) {
+          txs.push(clientDb.tx.$files[product.image.id].delete())
+        }
+        for (const removedId of galleryRemoved) {
+          txs.push(clientDb.tx.$files[removedId].delete())
+        }
+        for (const variant of product.variants ?? []) {
+          txs.push(clientDb.tx.productVariants[variant.id].delete())
+        }
+        for (const row of variants) {
+          const variantId = id()
+          txs.push(
+            clientDb.tx.productVariants[variantId]
+              .create(buildVariantPayload(row))
+              .link({ product: product.id })
+          )
         }
       } else {
         const productId = id()
@@ -145,15 +284,27 @@ export function ProductFormDialog({
         if (categoryId) {
           chunk.link({ category: categoryId })
         }
-        if (fileId) {
-          chunk.link({ image: fileId })
+        if (thumbnailId) {
+          chunk.link({ image: thumbnailId })
+        }
+        if (galleryIds.length > 0) {
+          chunk.link({ gallery: galleryIds })
         }
         if (selectedCollections.length > 0) {
           chunk.link({ collections: selectedCollections })
         }
-        await clientDb.transact(chunk)
+        txs.push(chunk)
+        for (const row of variants) {
+          const variantId = id()
+          txs.push(
+            clientDb.tx.productVariants[variantId]
+              .create(buildVariantPayload(row))
+              .link({ product: productId })
+          )
+        }
       }
 
+      await clientDb.transact(txs as Parameters<typeof clientDb.transact>[0])
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.saveError"))
@@ -164,7 +315,7 @@ export function ProductFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {product ? t("admin.editProduct") : t("admin.addProduct")}
@@ -172,7 +323,7 @@ export function ProductFormDialog({
           <DialogDescription>{t("admin.productFormHint")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-5">
+          <div className="flex max-h-[min(65vh,32rem)] flex-col gap-5 overflow-y-auto pr-1">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t("admin.name")} htmlFor="admin-product-name">
                 <Input
@@ -209,7 +360,19 @@ export function ProductFormDialog({
               />
             </Field>
 
-            <div className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label={t("admin.richDescription")}
+              htmlFor="admin-product-rich-description"
+            >
+              <RichTextEditor
+                id="admin-product-rich-description"
+                value={richDescription}
+                onChange={setRichDescription}
+                placeholder={t("admin.richDescriptionHint")}
+              />
+            </Field>
+
+            <div className="grid gap-5 sm:grid-cols-3">
               <Field label={t("admin.price")} htmlFor="admin-product-price">
                 <Input
                   id="admin-product-price"
@@ -222,6 +385,31 @@ export function ProductFormDialog({
                   onChange={(event) => setPrice(event.target.value)}
                 />
               </Field>
+              <Field
+                label={t("admin.discountPrice")}
+                htmlFor="admin-product-compare-at-price"
+              >
+                <Input
+                  id="admin-product-compare-at-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={compareAtPrice}
+                  placeholder="0.00"
+                  onChange={(event) => setCompareAtPrice(event.target.value)}
+                />
+              </Field>
+              <Field label={t("admin.sku")} htmlFor="admin-product-sku">
+                <Input
+                  id="admin-product-sku"
+                  value={sku}
+                  placeholder="BB-1001"
+                  onChange={(event) => setSku(event.target.value)}
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
               <Field
                 label={t("admin.category")}
                 htmlFor="admin-product-category"
@@ -243,25 +431,24 @@ export function ProductFormDialog({
                   <ChevronDown className="pointer-events-none absolute top-1/2 right-0 size-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </Field>
-            </div>
-
-            <div className="flex flex-wrap gap-6">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={inStock}
-                  onChange={(event) => setInStock(event.target.checked)}
-                />
-                {t("admin.inStock")}
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={featured}
-                  onChange={(event) => setFeatured(event.target.checked)}
-                />
-                {t("admin.featured")}
-              </label>
+              <div className="flex flex-wrap content-end gap-6 pb-1">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={inStock}
+                    onChange={(event) => setInStock(event.target.checked)}
+                  />
+                  {t("admin.inStock")}
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={featured}
+                    onChange={(event) => setFeatured(event.target.checked)}
+                  />
+                  {t("admin.featured")}
+                </label>
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -315,13 +502,33 @@ export function ProductFormDialog({
                   />
                 </div>
               )}
+              {file && thumbUrl && (
+                <div className="size-24 shrink-0 overflow-hidden bg-muted">
+                  <Image
+                    src={thumbUrl}
+                    alt=""
+                    width={96}
+                    height={96}
+                    className="size-full object-cover"
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <Input
                   ref={fileRef}
                   type="file"
                   accept="image/*"
                   className="max-w-xs"
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                  onChange={(event) => {
+                    const selected = event.target.files?.[0] ?? null
+                    if (selected) {
+                      if (thumbUrl) {
+                        URL.revokeObjectURL(thumbUrl)
+                      }
+                      setThumbUrl(URL.createObjectURL(selected))
+                      setFile(selected)
+                    }
+                  }}
                 />
                 {file && (
                   <Button
@@ -329,6 +536,10 @@ export function ProductFormDialog({
                     variant="ghost"
                     size="sm"
                     onClick={() => {
+                      if (thumbUrl) {
+                        URL.revokeObjectURL(thumbUrl)
+                      }
+                      setThumbUrl(null)
                       setFile(null)
                       if (fileRef.current) {
                         fileRef.current.value = ""
@@ -342,6 +553,156 @@ export function ProductFormDialog({
               <p className="text-xs text-muted-foreground">
                 {t("admin.imageHint")}
               </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                {t("admin.gallery")}
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {existingGallery.map((image) => (
+                  <div
+                    key={image.id}
+                    className="group relative aspect-square overflow-hidden bg-muted"
+                  >
+                    <Image
+                      src={image.url}
+                      alt=""
+                      fill
+                      sizes="96px"
+                      className="object-cover"
+                    />
+                    <button
+                      type="button"
+                      aria-label={t("admin.removeImage")}
+                      onClick={() =>
+                        setGalleryRemoved((current) => [...current, image.id])
+                      }
+                      className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm hover:text-destructive"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {galleryUploads.map((upload, index) => (
+                  <div
+                    key={upload.url}
+                    className="group relative aspect-square overflow-hidden bg-muted"
+                  >
+                    <Image
+                      src={upload.url}
+                      alt=""
+                      fill
+                      sizes="96px"
+                      className="object-cover"
+                    />
+                    <button
+                      type="button"
+                      aria-label={t("admin.removeImage")}
+                      onClick={() => removeGalleryUpload(index)}
+                      className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm hover:text-destructive"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3">
+                <Input
+                  ref={galleryRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="max-w-xs"
+                  onChange={(event) => handleGalleryFiles(event.target.files)}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("admin.galleryHint")}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                  {t("admin.variants")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addVariant}
+                >
+                  <Plus data-icon="inline-start" />
+                  {t("admin.addVariant")}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("admin.variantsHint")}
+              </p>
+              {variants.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("admin.noVariants")}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {variants.map((row) => (
+                    <div
+                      key={row.key}
+                      className="grid gap-2 rounded-md border border-border p-2 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]"
+                    >
+                      <Input
+                        value={row.title}
+                        placeholder={t("admin.variantTitle")}
+                        onChange={(event) =>
+                          updateVariant(row.key, {
+                            title: event.target.value,
+                          })
+                        }
+                      />
+                      <Input
+                        value={row.value}
+                        placeholder={t("admin.variantValue")}
+                        onChange={(event) =>
+                          updateVariant(row.key, { value: event.target.value })
+                        }
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={row.priceCents}
+                        placeholder={t("admin.variantPrice")}
+                        onChange={(event) =>
+                          updateVariant(row.key, {
+                            priceCents: event.target.value,
+                          })
+                        }
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={row.stock}
+                        placeholder={t("admin.variantStock")}
+                        onChange={(event) =>
+                          updateVariant(row.key, { stock: event.target.value })
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label={t("admin.removeVariant")}
+                        onClick={() => removeVariant(row.key)}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -368,4 +729,16 @@ export function ProductFormDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+function buildVariantPayload(row: VariantRow) {
+  const price = parseFloat(row.priceCents)
+  const stock = parseInt(row.stock, 10)
+  return {
+    title: row.title.trim(),
+    value: row.value.trim(),
+    priceCents:
+      Number.isFinite(price) && price > 0 ? Math.round(price * 100) : undefined,
+    stock: Number.isFinite(stock) && stock > 0 ? stock : undefined,
+  }
 }

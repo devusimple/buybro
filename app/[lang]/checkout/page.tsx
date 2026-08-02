@@ -258,7 +258,7 @@ function CheckoutFlow({
             <CardContent className="flex flex-col gap-4">
               <ul className="flex flex-col gap-4">
                 {items.map((item) => (
-                  <li key={item.id} className="flex items-center gap-3">
+                  <li key={item.lineId} className="flex items-center gap-3">
                     <div className="size-14 shrink-0 overflow-hidden bg-muted">
                       {item.imageUrl ? (
                         <Image
@@ -274,6 +274,11 @@ function CheckoutFlow({
                       <p className="truncate text-xs font-semibold tracking-wider uppercase">
                         {item.name}
                       </p>
+                      {item.variant && (
+                        <p className="truncate text-[0.6875rem] text-muted-foreground">
+                          {item.variant}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         {item.quantity} × {formatPrice(item.priceCents)}
                       </p>
