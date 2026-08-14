@@ -51,7 +51,15 @@ const _schema = i.schema({
       rating: i.number().indexed(),
       comment: i.string().optional(),
       verified: i.boolean().optional(),
+      helpfulCount: i.number().indexed().optional(),
+      adminReply: i.string().optional(),
+      adminReplyAt: i.number().optional(),
       createdAt: i.number().indexed(),
+    }),
+    productFaqs: i.entity({
+      question: i.string(),
+      answer: i.string(),
+      sortOrder: i.number().indexed().optional(),
     }),
     wishlists: i.entity({
       ownerId: i.string().indexed(),
@@ -115,6 +123,7 @@ const _schema = i.schema({
       ownerId: i.string().indexed(),
       ownerEmail: i.string().indexed().optional(),
       status: i.string().indexed(),
+      paymentMethod: i.string().optional(),
       totalCents: i.number(),
       subtotalCents: i.number().optional(),
       discountCents: i.number().optional(),
@@ -135,6 +144,14 @@ const _schema = i.schema({
       priceCents: i.number(),
       name: i.string().optional(),
       variant: i.string().optional(),
+    }),
+    notifications: i.entity({
+      ownerId: i.string().indexed(),
+      orderId: i.string().optional(),
+      type: i.string().optional(),
+      status: i.string().optional(),
+      read: i.boolean().indexed().optional(),
+      createdAt: i.number().indexed(),
     }),
   },
   links: {
@@ -285,6 +302,31 @@ const _schema = i.schema({
         on: "$users",
         has: "many",
         label: "reviews",
+      },
+    },
+    reviewMedia: {
+      forward: {
+        on: "reviews",
+        has: "many",
+        label: "media",
+      },
+      reverse: {
+        on: "$files",
+        has: "many",
+        label: "reviewMedia",
+      },
+    },
+    faqProduct: {
+      forward: {
+        on: "productFaqs",
+        has: "one",
+        label: "product",
+        onDelete: "cascade",
+      },
+      reverse: {
+        on: "products",
+        has: "many",
+        label: "faqs",
       },
     },
     wishlistProduct: {

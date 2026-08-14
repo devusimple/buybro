@@ -25,6 +25,7 @@ import type { AdminOrder, AdminProfile } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
+import { notifyOrderStatus } from "@/lib/notifications"
 import { isOrderStatus, ORDER_STATUSES, STATUS_VARIANTS } from "@/lib/orders"
 import { cn } from "@/lib/utils"
 
@@ -38,6 +39,16 @@ function statusLabel(t: ReturnType<typeof useI18n>["t"], status: string) {
       cancelled: t("orders.statusCancelled"),
     }[status] ?? status
   )
+}
+
+function paymentLabel(
+  t: ReturnType<typeof useI18n>["t"],
+  method?: string | null
+) {
+  if (method === "online") {
+    return t("checkout.onlinePayment")
+  }
+  return t("checkout.cod")
 }
 
 export default function AdminOrdersPage() {
@@ -72,14 +83,20 @@ export default function AdminOrdersPage() {
   }
 
   async function handleStatusChange(order: AdminOrder, value: string) {
-    if (!isOrderStatus(value)) {
+    if (!isOrderStatus(value) || value === order.status) {
       return
     }
     setError(null)
     try {
-      await clientDb.transact(
-        clientDb.tx.orders[order.id].update({ status: value })
-      )
+      const txs: unknown[] = [
+        clientDb.tx.orders[order.id].update({ status: value }),
+        notifyOrderStatus({
+          ownerId: order.ownerId,
+          orderId: order.id,
+          status: value,
+        }),
+      ]
+      await clientDb.transact(txs as Parameters<typeof clientDb.transact>[0])
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.updateError"))
     }
@@ -170,6 +187,9 @@ export default function AdminOrdersPage() {
                             variant={STATUS_VARIANTS[order.status] ?? "outline"}
                           >
                             {statusLabel(t, order.status)}
+                          </Badge>
+                          <Badge variant="secondary">
+                            {paymentLabel(t, order.paymentMethod)}
                           </Badge>
                           <span className="text-base font-semibold">
                             {formatPrice(order.totalCents)}

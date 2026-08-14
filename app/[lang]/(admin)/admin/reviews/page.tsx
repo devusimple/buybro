@@ -26,13 +26,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type { AppSchema } from "@/instant.schema"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
+import { nowTimestamp } from "@/lib/time"
 import { cn } from "@/lib/utils"
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 type AdminReviewWithProduct = InstaQLEntity<
   AppSchema,
   "reviews",
-  { product: { image: {} } }
+  { product: { image: {} }; media: {} }
 >
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 
@@ -40,15 +41,40 @@ export default function AdminReviewsPage() {
   const { t, locale } = useI18n()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [replyingId, setReplyingId] = useState<string | null>(null)
+  const [replyDraft, setReplyDraft] = useState<Record<string, string>>({})
+  const [replyBusy, setReplyBusy] = useState(false)
 
   const { data, isLoading } = clientDb.useQuery({
     reviews: {
       $: { order: { createdAt: "desc" } },
       product: { image: {} },
+      media: {},
     },
   })
 
   const reviews = (data?.reviews ?? []) as AdminReviewWithProduct[]
+
+  async function handleReply(review: AdminReviewWithProduct) {
+    const text = (replyDraft[review.id] ?? "").trim()
+    const repliedAt = nowTimestamp()
+    setReplyBusy(true)
+    setError(null)
+    try {
+      await clientDb.transact(
+        clientDb.tx.reviews[review.id].update({
+          adminReply: text || null,
+          adminReplyAt: text ? repliedAt : undefined,
+        })
+      )
+      setReplyingId(null)
+      setReplyDraft((drafts) => ({ ...drafts, [review.id]: text }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.updateError"))
+    } finally {
+      setReplyBusy(false)
+    }
+  }
 
   async function handleDelete(review: AdminReviewWithProduct) {
     if (confirmDeleteId !== review.id) {
@@ -59,6 +85,9 @@ export default function AdminReviewsPage() {
     setError(null)
     try {
       await clientDb.transact(clientDb.tx.reviews[review.id].delete())
+      for (const file of review.media ?? []) {
+        await clientDb.transact(clientDb.tx.$files[file.id].delete())
+      }
       const product = review.product
       if (product && product.reviewCount != null && product.rating != null) {
         const oldCount = product.reviewCount
@@ -168,6 +197,30 @@ export default function AdminReviewsPage() {
                           {review.comment}
                         </p>
                       )}
+                      {(review.media ?? []).length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {review.media!.map((file) =>
+                            /\.(mp4|webm|mov|ogg|m4v)$/i.test(file.url) ? (
+                              <video
+                                key={file.id}
+                                src={file.url}
+                                controls
+                                preload="metadata"
+                                className="size-16 bg-muted object-cover"
+                              />
+                            ) : (
+                              <Image
+                                key={file.id}
+                                src={file.url}
+                                alt={review.authorName}
+                                width={64}
+                                height={64}
+                                className="size-16 bg-muted object-cover"
+                              />
+                            )
+                          )}
+                        </div>
+                      )}
                       {review.product && (
                         <Link
                           href={`/${locale}/admin/products`}
@@ -190,9 +243,68 @@ export default function AdminReviewsPage() {
                           </span>
                         </Link>
                       )}
+                      {review.adminReply && (
+                        <div className="mt-2 flex flex-col gap-1 rounded-lg bg-muted/60 p-3">
+                          <p className="text-xs font-semibold text-primary">
+                            {t("product.storeReply")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {review.adminReply}
+                          </p>
+                        </div>
+                      )}
+                      {replyingId === review.id && (
+                        <div className="mt-2 flex flex-col gap-2">
+                          <textarea
+                            value={
+                              replyDraft[review.id] ?? review.adminReply ?? ""
+                            }
+                            onChange={(event) =>
+                              setReplyDraft((drafts) => ({
+                                ...drafts,
+                                [review.id]: event.target.value,
+                              }))
+                            }
+                            rows={3}
+                            placeholder={t("admin.replyPlaceholder")}
+                            className="min-h-0 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-ring"
+                          />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              disabled={replyBusy}
+                              onClick={() => handleReply(review)}
+                            >
+                              {t("admin.saveReply")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setReplyingId(null)}
+                            >
+                              {t("common.cancel")}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setReplyingId((current) =>
+                            current === review.id ? null : review.id
+                          )
+                          setError(null)
+                        }}
+                      >
+                        <MessageSquareText data-icon="inline-start" />
+                        {review.adminReply
+                          ? t("admin.editReply")
+                          : t("admin.reply")}
+                      </Button>
                       {confirming ? (
                         <>
                           <Button

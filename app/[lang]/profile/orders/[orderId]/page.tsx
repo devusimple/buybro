@@ -33,6 +33,16 @@ import { useI18n } from "@/lib/i18n"
 import { STATUS_ORDER, STATUS_VARIANTS } from "@/lib/orders"
 import { cn } from "@/lib/utils"
 
+function paymentLabel(
+  t: ReturnType<typeof useI18n>["t"],
+  method?: string | null
+) {
+  if (method === "online") {
+    return t("checkout.onlinePayment")
+  }
+  return t("checkout.cod")
+}
+
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 type OrderWithImage = InstaQLEntity<
   AppSchema,
@@ -371,7 +381,7 @@ export default function OrderDetailPage() {
               <span>
                 {t("checkout.paymentTitle")}:{" "}
                 <span className="font-medium text-foreground">
-                  {t("checkout.cod")}
+                  {paymentLabel(t, order.paymentMethod)}
                 </span>
               </span>
             </CardContent>

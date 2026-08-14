@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Suspense, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Search, X } from "lucide-react"
+import { Clock, Search, TrendingUp, X } from "lucide-react"
 
 import { FilterBar } from "@/components/catalog/filter-bar"
 import { ProductCard } from "@/components/product-card"
@@ -19,6 +19,11 @@ import {
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
 import { getRecentProductIds } from "@/lib/recent"
+import {
+  addRecentSearchTerm,
+  clearRecentSearchTerms,
+  getRecentSearchTerms,
+} from "@/lib/search-history"
 import type { Product } from "@/lib/types"
 
 function SectionRow({
@@ -70,6 +75,10 @@ function SearchPage() {
 
   const [value, setValue] = useState(query)
   const [prevQuery, setPrevQuery] = useState(query)
+  const [focused, setFocused] = useState(false)
+  const [recentTerms, setRecentTerms] = useState<string[]>(() =>
+    getRecentSearchTerms()
+  )
   if (prevQuery !== query) {
     setPrevQuery(query)
     setValue(query)
@@ -133,6 +142,55 @@ function SearchPage() {
     )
   }, [products, bestSellers])
 
+  const nameMatches = useMemo(() => {
+    const term = value.trim().toLowerCase()
+    if (!term) {
+      return []
+    }
+    const seen = new Set<string>()
+    const matches: string[] = []
+    for (const product of products) {
+      const lower = product.name.toLowerCase()
+      if (lower.includes(term) && !seen.has(lower)) {
+        seen.add(lower)
+        matches.push(product.name)
+        if (matches.length >= 6) {
+          break
+        }
+      }
+    }
+    return matches
+  }, [products, value])
+
+  const matchingRecentTerms = useMemo(() => {
+    const term = value.trim().toLowerCase()
+    return recentTerms
+      .filter((existing) => existing.toLowerCase().includes(term))
+      .slice(0, 5)
+  }, [recentTerms, value])
+
+  function recordTerm(term: string) {
+    addRecentSearchTerm(term)
+    setRecentTerms(getRecentSearchTerms())
+  }
+
+  function handleSubmit(term: string) {
+    recordTerm(term)
+    handleChange(term)
+    setFocused(false)
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      recordTerm(value)
+    }
+  }
+
+  function handleClearHistory() {
+    clearRecentSearchTerms()
+    setRecentTerms([])
+  }
+
   function handleChange(next: string) {
     setValue(next)
     const params = new URLSearchParams()
@@ -179,6 +237,17 @@ function SearchPage() {
           <Input
             value={value}
             onChange={(event) => handleChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setFocused(true)}
+            onBlur={(event) => {
+              if (
+                !event.currentTarget.parentElement?.contains(
+                  event.relatedTarget as Node
+                )
+              ) {
+                setFocused(false)
+              }
+            }}
             placeholder={t("search.placeholder")}
             className="pr-10 pl-9"
             autoFocus
@@ -195,6 +264,48 @@ function SearchPage() {
               <X />
             </Button>
           )}
+          {focused &&
+            value.trim() &&
+            (nameMatches.length > 0 || matchingRecentTerms.length > 0) && (
+              <div className="absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg">
+                {nameMatches.length > 0 && (
+                  <div className="flex flex-col p-1">
+                    <p className="px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
+                      {t("search.suggestions")}
+                    </p>
+                    {nameMatches.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => handleSubmit(name)}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        <TrendingUp className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {matchingRecentTerms.length > 0 && (
+                  <div className="flex flex-col border-t border-border/60 p-1">
+                    <p className="px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
+                      {t("search.recentTitle")}
+                    </p>
+                    {matchingRecentTerms.map((term) => (
+                      <button
+                        key={term}
+                        type="button"
+                        onClick={() => handleSubmit(term)}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        <Clock className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{term}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
         </div>
       </div>
 
@@ -278,6 +389,31 @@ function SearchPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-12 pt-10">
+          {recentTerms.length > 0 && (
+            <section className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold tracking-tight uppercase">
+                  {t("search.recentTitle")}
+                </h2>
+                <Button variant="ghost" size="sm" onClick={handleClearHistory}>
+                  {t("search.clearHistory")}
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recentTerms.map((term) => (
+                  <Button
+                    key={term}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSubmit(term)}
+                  >
+                    <Clock data-icon="inline-start" />
+                    {term}
+                  </Button>
+                ))}
+              </div>
+            </section>
+          )}
           <SectionRow title={t("search.suggestions")} products={suggestions} />
           <SectionRow title={t("search.recentlyViewed")} products={recents} />
           <SectionRow title={t("search.topSellers")} products={topSellers} />

@@ -1,8 +1,10 @@
 "use client"
 
+import { AdminLowStock } from "@/components/admin/admin-low-stock"
 import { AdminRecentOrders } from "@/components/admin/admin-recent-orders"
 import { AdminRevenueChart } from "@/components/admin/admin-revenue-chart"
 import { AdminStatCards } from "@/components/admin/admin-stat-cards"
+import { AdminTopProducts } from "@/components/admin/admin-top-products"
 import { Skeleton } from "@/components/ui/skeleton"
 import { clientDb } from "@/lib/clientDb"
 import { formatPrice } from "@/lib/format"
@@ -72,6 +74,10 @@ export default function AdminDashboardPage() {
     <div className="flex flex-col gap-4 md:gap-6">
       <AdminStatCards items={stats} />
       <AdminRevenueChart orders={orders} />
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+        <AdminTopProducts orders={orders} />
+        <AdminLowStock products={products} />
+      </div>
       <AdminRecentOrders orders={orders} profiles={profiles} />
     </div>
   )

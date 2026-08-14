@@ -5,6 +5,7 @@ import Image from "next/image"
 import { Package, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { ProductFormDialog } from "@/components/admin/product-form"
+import { AdminProductCsv } from "@/components/admin/product-csv"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -44,6 +45,7 @@ export default function AdminProductsPage() {
       gallery: {},
       variants: {},
       collections: {},
+      faqs: {},
     },
     categories: {},
     collections: {
@@ -94,10 +96,13 @@ export default function AdminProductsPage() {
                 {t("admin.productsDescription")}
               </CardDescription>
             </div>
-            <Button size="sm" onClick={openAdd}>
-              <Plus data-icon="inline-start" />
-              {t("admin.addProduct")}
-            </Button>
+            <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
+              <AdminProductCsv products={products} categories={categories} />
+              <Button size="sm" onClick={openAdd}>
+                <Plus data-icon="inline-start" />
+                {t("admin.addProduct")}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -171,6 +176,27 @@ export default function AdminProductsPage() {
                           ? ` · ${product.category.name}`
                           : ` · ${t("admin.uncategorized")}`}
                       </p>
+                      {(product.variants ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {product.variants!.map((variant) => (
+                            <span
+                              key={variant.id}
+                              title={variant.title}
+                              className={`rounded-md border px-1.5 py-0.5 text-[11px] ${
+                                variant.stock != null && variant.stock <= 5
+                                  ? "border-destructive/40 text-destructive"
+                                  : "border-border text-muted-foreground"
+                              }`}
+                            >
+                              {variant.value || variant.title}
+                              {variant.sku ? ` · ${variant.sku}` : ""}
+                              {variant.stock != null
+                                ? ` · ${variant.stock}`
+                                : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex shrink-0 items-center gap-3">

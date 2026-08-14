@@ -54,7 +54,12 @@ import {
 } from "@/lib/coupons"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
-import { placeOrder, type ShippingSnapshot, type StockLine } from "@/lib/orders"
+import {
+  placeOrder,
+  type PaymentMethod,
+  type ShippingSnapshot,
+  type StockLine,
+} from "@/lib/orders"
 import type { Address } from "@/lib/profile"
 import type { Coupon } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -166,6 +171,7 @@ function CartCheckout({
   const [couponInput, setCouponInput] = useState("")
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
   const [couponMessage, setCouponMessage] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod")
 
   const { data, isLoading } = clientDb.useQuery({
     profiles: {
@@ -279,6 +285,7 @@ function CartCheckout({
         subtotalCents: subtotal,
         discountCents: discount,
         couponCode: appliedCoupon?.code,
+        paymentMethod,
         shipping,
       })
       clear()
@@ -335,7 +342,10 @@ function CartCheckout({
             onPhoneChange={setPhone}
           />
 
-          <PaymentMethodSection />
+          <PaymentMethodSection
+            value={paymentMethod}
+            onChange={setPaymentMethod}
+          />
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -605,7 +615,13 @@ function AddressCardSection({
   )
 }
 
-function PaymentMethodSection() {
+function PaymentMethodSection({
+  value,
+  onChange,
+}: {
+  value: PaymentMethod
+  onChange: (value: PaymentMethod) => void
+}) {
   const { t } = useI18n()
   const comingSoon = [
     { name: "bKash", icon: Smartphone },
@@ -620,6 +636,32 @@ function PaymentMethodSection() {
         <CardDescription>{t("checkout.paymentDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        <button
+          type="button"
+          onClick={() => onChange("cod")}
+          data-selected={value === "cod" || undefined}
+          aria-pressed={value === "cod"}
+          className="flex cursor-pointer items-center gap-3 border border-primary bg-transparent p-4 text-left ring-1 ring-primary/30 transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        >
+          <Banknote className="size-5 shrink-0 text-primary" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className="text-sm font-semibold">{t("checkout.cod")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("checkout.codNote")}
+            </p>
+          </div>
+          <span
+            className={cn(
+              "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+              value === "cod"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-transparent"
+            )}
+          >
+            <Check className="size-3.5" />
+          </span>
+        </button>
+
         <div className="flex items-start gap-3 border border-dashed border-foreground/20 bg-muted/40 p-4">
           <Badge variant="outline" className="shrink-0">
             {t("common.comingSoon")}
@@ -633,23 +675,6 @@ function PaymentMethodSection() {
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          data-selected
-          className="flex items-center gap-3 border border-primary bg-transparent p-4 text-left ring-1 ring-primary/30"
-        >
-          <Banknote className="size-5 shrink-0 text-primary" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <p className="text-sm font-semibold">{t("checkout.cod")}</p>
-            <p className="text-xs text-muted-foreground">
-              {t("checkout.codNote")}
-            </p>
-          </div>
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Check className="size-3.5" />
-          </span>
-        </button>
 
         {comingSoon.map((option) => (
           <button

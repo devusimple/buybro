@@ -7,6 +7,7 @@ import { AccountSection } from "@/components/profile/account-section"
 import { AddressBook } from "@/components/profile/address-book"
 import { AvatarSection } from "@/components/profile/avatar-section"
 import { GeneralInfoForm } from "@/components/profile/general-info-form"
+import { NotificationsSection } from "@/components/profile/notifications-section"
 import { OrdersSection } from "@/components/profile/orders-section"
 import { WishlistSection } from "@/components/profile/wishlist-section"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -71,6 +72,7 @@ function ProfileDashboard({ user }: { user: User }) {
       </header>
 
       <OrdersSection user={user} />
+      <NotificationsSection userId={user.id} />
       <WishlistSection userId={user.id} />
       <AvatarSection user={user} profile={profile} loading={isLoading} />
       <GeneralInfoForm user={user} profile={profile} />

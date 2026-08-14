@@ -131,10 +131,36 @@ const rules = {
     allow: {
       view: "true",
       create: "true",
+      // Signed-in users bump helpfulCount with a one-tap vote. TODO(security):
+      // move to a server-side app once InstantDB server models land, so only
+      // the helpfulCount field can change for non-admins.
+      update: "auth.id != null || isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
+  productFaqs: {
+    allow: {
+      view: "true",
+      create: "isAdmin",
       update: "isAdmin",
       delete: "isAdmin",
     },
     bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
+  notifications: {
+    allow: {
+      view: "isOwner || isAdmin",
+      create: "isAdmin",
+      update: "isOwner || isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isOwner: "auth.id == data.ownerId",
       isAdmin: "'admin' in auth.ref('$user.roles.type')",
     },
   },

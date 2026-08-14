@@ -62,6 +62,8 @@ const en = {
     noResultsTitle: "No results found",
     noResultsDescription: "Try a different keyword or browse the catalog.",
     browseCatalog: "Browse catalog",
+    recentTitle: "Recent searches",
+    clearHistory: "Clear history",
   },
   categories: {
     title: "Browse categories",
@@ -130,6 +132,16 @@ const en = {
     reviewSuccess: "Thanks for your review!",
     reviewAgain: "Write another review",
     reviewError: "Failed to submit review",
+    reviewMedia: "Photos & videos",
+    reviewMediaHint:
+      "Add photos or videos of the product. Available for signed-in accounts.",
+    reviewRemoveMedia: "Remove media",
+    faq: "FAQ",
+    sortNewest: "Newest",
+    sortHelpful: "Most helpful",
+    helpful: "Helpful",
+    showMoreReviews: "Show more reviews",
+    storeReply: "Store response",
   },
   cart: {
     openCart: "Open cart",
@@ -345,6 +357,17 @@ const en = {
     generate: "Generate",
     invalid: "Choose a discount type and enter a value above 0.",
   },
+  notifications: {
+    title: "Notifications",
+    description: "Order updates and store messages.",
+    markAllRead: "Mark all read",
+    markRead: "Mark as read",
+    emptyTitle: "No notifications",
+    emptyDescription: "Order updates and store messages will appear here.",
+    orderStatus: "Order {status}",
+    general: "Store update",
+    viewOrder: "View order",
+  },
   admin: {
     label: "Admin",
     title: "Admin dashboard",
@@ -489,6 +512,78 @@ const en = {
     noReviews: "No reviews yet",
     noReviewsHint: "Customer reviews will appear here once submitted.",
     deleteReview: "Delete review",
+    faqs: "FAQ",
+    faqsHint: "Questions customers ask about this product.",
+    addFaq: "Add question",
+    removeFaq: "Remove question",
+    noFaqs: "No questions yet. Add common questions customers ask.",
+    faqQuestionPlaceholder: "Question (e.g. Does it come with a charger?)",
+    faqAnswerPlaceholder: "Answer",
+    exportCsv: "Export CSV",
+    importCsv: "Import CSV",
+    csvExportDone: "Products exported to CSV.",
+    csvInvalid: "This CSV doesn't look valid. Use the exported format.",
+    csvImportDone: "Imported {created} new product(s), updated {updated}.",
+    csvImportError: "Failed to import CSV",
+    reply: "Reply",
+    editReply: "Edit reply",
+    saveReply: "Save reply",
+    replyPlaceholder: "Write a public response to this review…",
+    lowStockTitle: "Low stock",
+    lowStockDescription: "Products at or below {count} units in stock",
+    noLowStock: "Nothing low on stock",
+    noLowStockHint: "All products have enough inventory for now.",
+    markInStock: "Mark in stock",
+    topProductsTitle: "Top products",
+    topProductsDescription: "Best sellers by revenue and order completion",
+    conversionRate: "{rate}% conversion",
+    deliveredOrders: "{count} delivered",
+    unitsSold: "{count} units sold",
+    noTopProducts: "No sales yet",
+    noTopProductsHint:
+      "Once orders come in, your best sellers will appear here.",
+  },
+  policies: {
+    supportTitle: "Need help?",
+    supportDescription:
+      "Our team is happy to answer any questions about warranties, returns and support.",
+    contactUs: "Contact support",
+    warranty: {
+      title: "Warranty",
+      description: "Every Buybro gadget is backed by a manufacturer warranty.",
+      intro:
+        "We stand behind the products we sell. This page explains what the warranty covers and how to claim it.",
+      coverageTitle: "Coverage",
+      coverageBody:
+        "Every product ships with its manufacturer-backed warranty from the date of delivery. The warranty period for most audio, wearables and laptop accessories is 12 months unless stated otherwise on the product page.",
+      coveredTitle: "What's covered",
+      coveredBody:
+        "The warranty covers manufacturing defects in materials and workmanship, including components that fail during normal use. If your device stops working as intended within the warranty period, we will repair or replace it at no extra cost.",
+      notCoveredTitle: "What's not covered",
+      notCoveredBody:
+        "The warranty does not cover physical damage, water or liquid damage, unauthorized repairs or modifications, misuse, loss or theft, or consumable parts such as batteries and cables that wear out with normal use.",
+      claimTitle: "How to claim",
+      claimBody:
+        "Contact our support team with your order number and a short description of the issue. We may ask for photos or a short video to diagnose the fault. Once approved, we will arrange a free replacement or repair within 5–7 working days.",
+    },
+    returns: {
+      title: "Returns",
+      description: "Easy, no-fuss returns across Bangladesh.",
+      intro:
+        "Changed your mind or received something wrong? We make returns simple. Here's everything you need to know.",
+      windowTitle: "Return window",
+      windowBody:
+        "You can request a return within 7 days of delivery for store credit or a replacement. Cash-on-delivery orders are refunded once the returned item passes inspection.",
+      conditionTitle: "Item condition",
+      conditionBody:
+        "Returned items must be unused, in their original packaging, and include all accessories and tags. Items damaged during unboxing by the customer may be refused.",
+      processTitle: "How to return",
+      processBody:
+        "Message our support team with your order number and reason for return. We will arrange a free pickup from your delivery address. The item is inspected at our facility before the return is finalized.",
+      refundTitle: "Refunds",
+      refundBody:
+        "Once your return is approved, we will process the refund or replacement within 3–5 working days. Refunds return to your original payment method; cash-on-delivery orders receive their refund by the same method the delivery was paid.",
+    },
   },
 }
 

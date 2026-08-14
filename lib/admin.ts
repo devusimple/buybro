@@ -7,7 +7,14 @@ import { clientDb } from "@/lib/clientDb"
 export type AdminProduct = InstaQLEntity<
   AppSchema,
   "products",
-  { category: {}; image: {}; gallery: {}; variants: {}; collections: {} }
+  {
+    category: {}
+    image: {}
+    gallery: {}
+    variants: {}
+    collections: {}
+    faqs: {}
+  }
 >
 export type AdminCategory = InstaQLEntity<
   AppSchema,

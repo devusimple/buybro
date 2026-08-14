@@ -39,6 +39,12 @@ type VariantRow = {
   stock: string
 }
 
+type FaqRow = {
+  key: string
+  question: string
+  answer: string
+}
+
 type GalleryUpload = {
   file: File
   url: string
@@ -101,6 +107,14 @@ export function ProductFormDialog({
     }))
   )
   const nextVariantKey = useRef(0)
+  const [faqs, setFaqs] = useState<FaqRow[]>(() =>
+    (product?.faqs ?? []).map((faq) => ({
+      key: faq.id,
+      question: faq.question,
+      answer: faq.answer,
+    }))
+  )
+  const nextFaqKey = useRef(0)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -139,6 +153,23 @@ export function ProductFormDialog({
 
   function removeVariant(key: string) {
     setVariants((current) => current.filter((row) => row.key !== key))
+  }
+
+  function updateFaq(key: string, patch: Partial<FaqRow>) {
+    setFaqs((current) =>
+      current.map((row) => (row.key === key ? { ...row, ...patch } : row))
+    )
+  }
+
+  function addFaq() {
+    setFaqs((current) => [
+      ...current,
+      { key: `new-${nextFaqKey.current++}`, question: "", answer: "" },
+    ])
+  }
+
+  function removeFaq(key: string) {
+    setFaqs((current) => current.filter((row) => row.key !== key))
   }
 
   function handleGalleryFiles(selected: FileList | null) {
@@ -283,6 +314,24 @@ export function ProductFormDialog({
               .link({ product: product.id })
           )
         }
+        for (const faq of product.faqs ?? []) {
+          txs.push(clientDb.tx.productFaqs[faq.id].delete())
+        }
+        for (const [index, row] of faqs.entries()) {
+          if (!row.question.trim() || !row.answer.trim()) {
+            continue
+          }
+          const faqId = id()
+          txs.push(
+            clientDb.tx.productFaqs[faqId]
+              .create({
+                question: row.question.trim(),
+                answer: row.answer.trim(),
+                sortOrder: index,
+              })
+              .link({ product: product.id })
+          )
+        }
       } else {
         const productId = id()
         const chunk = clientDb.tx.products[productId].create({
@@ -307,6 +356,21 @@ export function ProductFormDialog({
           txs.push(
             clientDb.tx.productVariants[variantId]
               .create(buildVariantPayload(row))
+              .link({ product: productId })
+          )
+        }
+        for (const [index, row] of faqs.entries()) {
+          if (!row.question.trim() || !row.answer.trim()) {
+            continue
+          }
+          const faqId = id()
+          txs.push(
+            clientDb.tx.productFaqs[faqId]
+              .create({
+                question: row.question.trim(),
+                answer: row.answer.trim(),
+                sortOrder: index,
+              })
               .link({ product: productId })
           )
         }
@@ -718,6 +782,69 @@ export function ProductFormDialog({
                       >
                         <Trash2 />
                       </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                  {t("admin.faqs")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addFaq}
+                >
+                  <Plus data-icon="inline-start" />
+                  {t("admin.addFaq")}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t("admin.faqsHint")}
+              </p>
+              {faqs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("admin.noFaqs")}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {faqs.map((row) => (
+                    <div
+                      key={row.key}
+                      className="grid gap-2 rounded-md border border-border p-2"
+                    >
+                      <Input
+                        value={row.question}
+                        placeholder={t("admin.faqQuestionPlaceholder")}
+                        onChange={(event) =>
+                          updateFaq(row.key, { question: event.target.value })
+                        }
+                      />
+                      <div className="flex items-start gap-2">
+                        <textarea
+                          rows={2}
+                          value={row.answer}
+                          placeholder={t("admin.faqAnswerPlaceholder")}
+                          onChange={(event) =>
+                            updateFaq(row.key, { answer: event.target.value })
+                          }
+                          className="w-full min-w-0 flex-1 resize-y border border-transparent border-b-input bg-transparent py-1 text-base outline-none focus-visible:border-b-ring md:text-sm"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          aria-label={t("admin.removeFaq")}
+                          onClick={() => removeFaq(row.key)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

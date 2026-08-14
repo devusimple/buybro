@@ -52,6 +52,8 @@ export type StockLine = CartItem & {
   variantStock?: number
 }
 
+export type PaymentMethod = "cod" | "online"
+
 export async function placeOrder({
   ownerId,
   ownerEmail,
@@ -59,6 +61,7 @@ export async function placeOrder({
   subtotalCents,
   discountCents,
   couponCode,
+  paymentMethod,
   shipping,
 }: {
   ownerId: string
@@ -67,6 +70,7 @@ export async function placeOrder({
   subtotalCents: number
   discountCents: number
   couponCode?: string
+  paymentMethod: PaymentMethod
   shipping: ShippingSnapshot
 }) {
   const orderId = id()
@@ -78,6 +82,7 @@ export async function placeOrder({
       ownerId,
       ownerEmail,
       status: "pending",
+      paymentMethod,
       totalCents,
       subtotalCents,
       discountCents,

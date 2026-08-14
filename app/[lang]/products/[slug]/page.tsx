@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, BadgeCheck } from "lucide-react"
+import { ArrowLeft, BadgeCheck, ChevronDown, ThumbsUp } from "lucide-react"
 import { useParams } from "next/navigation"
+import type { InstaQLEntity } from "@instantdb/react"
 
+import type { AppSchema } from "@/instant.schema"
 import { ProductCard } from "@/components/product-card"
 import { RatingStars } from "@/components/product/rating"
 import { ReviewForm } from "@/components/product/review-form"
@@ -25,6 +27,15 @@ import { cn } from "@/lib/utils"
 const richTextClasses =
   "[&_a]:text-primary [&_a]:underline [&_a]:break-all [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-3 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_li]:list-inside [&_ol]:mt-3 [&_ol]:list-decimal [&_ul]:mt-3 [&_ul]:list-disc [&_p]:leading-relaxed [&_p]:text-muted-foreground [&_p:not(:first-child)]:mt-3"
 
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+type ReviewWithMedia = InstaQLEntity<AppSchema, "reviews", { media: {} }>
+type ProductFaq = InstaQLEntity<AppSchema, "productFaqs">
+/* eslint-enable @typescript-eslint/no-empty-object-type */
+
+function isVideoFile(file: { url: string }) {
+  return /\.(mp4|webm|mov|ogg|m4v)$/i.test(file.url)
+}
+
 function ProductView({ slug }: { slug: string }) {
   const { t, locale } = useI18n()
   const { user } = clientDb.useAuth()
@@ -37,7 +48,8 @@ function ProductView({ slug }: { slug: string }) {
       gallery: {},
       variants: {},
       category: {},
-      reviews: {},
+      reviews: { media: {} },
+      faqs: {},
     },
   })
 
@@ -95,6 +107,8 @@ function ProductView({ slug }: { slug: string }) {
   }, [product])
 
   const [activeImage, setActiveImage] = useState(0)
+  const [reviewSort, setReviewSort] = useState<"newest" | "helpful">("newest")
+  const [visibleReviews, setVisibleReviews] = useState(5)
 
   const gallery = useMemo(
     () =>
@@ -221,8 +235,31 @@ function ProductView({ slug }: { slug: string }) {
       )
     : 0
 
-  const reviews = [...(product.reviews ?? [])].sort(
-    (a, b) => b.createdAt - a.createdAt
+  const reviews = [...((product.reviews ?? []) as ReviewWithMedia[])]
+  const sortedReviews = [...reviews].sort(
+    reviewSort === "helpful"
+      ? (a, b) => (b.helpfulCount ?? 0) - (a.helpfulCount ?? 0)
+      : (a, b) => b.createdAt - a.createdAt
+  )
+
+  async function handleHelpful(review: ReviewWithMedia) {
+    const key = `buybro-review-helpful:${review.id}`
+    if (localStorage.getItem(key)) {
+      return
+    }
+    localStorage.setItem(key, "1")
+    try {
+      await clientDb.transact(
+        clientDb.tx.reviews[review.id].update({
+          helpfulCount: (review.helpfulCount ?? 0) + 1,
+        })
+      )
+    } catch {
+      localStorage.removeItem(key)
+    }
+  }
+  const faqs = [...((product.faqs ?? []) as ProductFaq[])].sort(
+    (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
   )
   const reviewCount = product.reviewCount ?? 0
   const rating = product.rating ?? 0
@@ -445,22 +482,45 @@ function ProductView({ slug }: { slug: string }) {
                 {t("product.reviews")}
               </h2>
               {reviewCount > 0 && (
-                <div className="flex items-center gap-2">
-                  <RatingStars value={rating} size="sm" />
-                  <span className="text-xs text-muted-foreground">
-                    {t(
-                      reviewCount === 1
-                        ? "product.reviewCountOne"
-                        : "product.reviewCount",
-                      { count: reviewCount }
-                    )}
-                  </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <RatingStars value={rating} size="sm" />
+                    <span className="text-xs text-muted-foreground">
+                      {t(
+                        reviewCount === 1
+                          ? "product.reviewCountOne"
+                          : "product.reviewCount",
+                        { count: reviewCount }
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    {(
+                      [
+                        { value: "newest", label: t("product.sortNewest") },
+                        { value: "helpful", label: t("product.sortHelpful") },
+                      ] as const
+                    ).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setReviewSort(option.value)}
+                        className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                          reviewSort === option.value
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/50"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
             {reviews.length > 0 ? (
               <ul className="flex flex-col divide-y divide-border/60">
-                {reviews.map((review) => (
+                {sortedReviews.slice(0, visibleReviews).map((review) => (
                   <li key={review.id} className="flex flex-col gap-2 py-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
@@ -490,6 +550,77 @@ function ProductView({ slug }: { slug: string }) {
                         {review.comment}
                       </p>
                     )}
+                    {(review.media ?? []).length > 0 && (
+                      <div className="mt-1 grid grid-cols-3 gap-2">
+                        {review.media!.map((file) =>
+                          isVideoFile(file) ? (
+                            <video
+                              key={file.id}
+                              src={file.url}
+                              controls
+                              preload="metadata"
+                              className="aspect-square w-full bg-muted object-cover"
+                            />
+                          ) : (
+                            <a
+                              key={file.id}
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative block aspect-square overflow-hidden bg-muted"
+                            >
+                              <Image
+                                src={file.url}
+                                alt={review.authorName}
+                                fill
+                                sizes="(min-width: 1024px) 160px, 30vw"
+                                className="object-cover transition-transform hover:scale-105"
+                              />
+                            </a>
+                          )
+                        )}
+                      </div>
+                    )}
+                    {review.adminReply && (
+                      <div className="mt-2 flex flex-col gap-1 rounded-lg bg-muted/60 p-3">
+                        <p className="text-xs font-semibold text-primary">
+                          {t("product.storeReply")}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {review.adminReply}
+                        </p>
+                        {review.adminReplyAt && (
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(review.adminReplyAt).toLocaleDateString(
+                              locale === "bn" ? "bn-BD" : "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              }
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <div className="mt-1 flex items-center justify-end">
+                      <button
+                        type="button"
+                        disabled={Boolean(
+                          typeof window !== "undefined" &&
+                          localStorage.getItem(
+                            `buybro-review-helpful:${review.id}`
+                          )
+                        )}
+                        onClick={() => handleHelpful(review)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary disabled:cursor-default disabled:opacity-60"
+                      >
+                        <ThumbsUp className="size-3.5" />
+                        {(review.helpfulCount ?? 0) > 0
+                          ? review.helpfulCount
+                          : t("product.helpful")}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -497,6 +628,16 @@ function ProductView({ slug }: { slug: string }) {
               <p className="text-sm text-muted-foreground">
                 {t("product.noReviews")}
               </p>
+            )}
+            {sortedReviews.length > visibleReviews && (
+              <button
+                type="button"
+                onClick={() => setVisibleReviews((count) => count + 5)}
+                className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+              >
+                <ChevronDown className="size-4" />
+                {t("product.showMoreReviews")}
+              </button>
             )}
           </div>
 
@@ -515,6 +656,27 @@ function ProductView({ slug }: { slug: string }) {
           </div>
         </div>
       </section>
+
+      {faqs.length > 0 && (
+        <section className="mt-12 flex flex-col gap-4">
+          <h2 className="text-lg font-semibold tracking-tight uppercase">
+            {t("product.faq")}
+          </h2>
+          <div className="flex flex-col divide-y divide-border/60 border-y border-border/60">
+            {faqs.map((faq) => (
+              <details key={faq.id} className="group py-3 open:pb-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold outline-none select-none [&::-webkit-details-marker]:hidden">
+                  {faq.question}
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {faq.answer}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
 
       <ProductRow title={t("product.related")} products={relatedProducts} />
       <ProductRow
