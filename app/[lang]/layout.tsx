@@ -26,6 +26,20 @@ export const metadata: Metadata = {
   },
   description:
     "Shop the latest gadgets: audio, wearables, laptops, phones and accessories.",
+  openGraph: {
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Buybro — Gadget store",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/opengraph-image.png"],
+  },
 }
 
 export function generateStaticParams() {
