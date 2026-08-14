@@ -2,7 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Package, ShoppingCart, Tags } from "lucide-react"
+import {
+  LayoutDashboard,
+  MessageSquareText,
+  Package,
+  ShoppingCart,
+  Tags,
+  TicketPercent,
+} from "lucide-react"
 
 import { useI18n } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
@@ -32,6 +39,16 @@ export function AdminNav() {
       href: `/${locale}/admin/orders`,
       label: t("admin.orders"),
       icon: ShoppingCart,
+    },
+    {
+      href: `/${locale}/admin/coupons`,
+      label: t("admin.coupons"),
+      icon: TicketPercent,
+    },
+    {
+      href: `/${locale}/admin/reviews`,
+      label: t("admin.reviews"),
+      icon: MessageSquareText,
     },
   ]
 

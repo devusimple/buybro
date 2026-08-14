@@ -6,10 +6,12 @@ import {
   CircleUserRound,
   LayoutDashboard,
   LogOut,
+  MessageSquareText,
   Package,
   ShoppingCart,
   Store,
   Tags,
+  TicketPercent,
   Users,
 } from "lucide-react"
 import { useState } from "react"
@@ -83,6 +85,16 @@ export function AdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
       title: t("admin.orders"),
       href: `/${locale}/admin/orders`,
       icon: ShoppingCart,
+    },
+    {
+      title: t("admin.coupons"),
+      href: `/${locale}/admin/coupons`,
+      icon: TicketPercent,
+    },
+    {
+      title: t("admin.reviews"),
+      href: `/${locale}/admin/reviews`,
+      icon: MessageSquareText,
     },
     {
       title: t("admin.users"),

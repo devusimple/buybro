@@ -142,12 +142,22 @@ export default function AdminProductsPage() {
                           {product.name}
                         </p>
                         <Badge
-                          variant={product.inStock ? "default" : "secondary"}
+                          variant={
+                            product.stock != null && product.stock <= 0
+                              ? "secondary"
+                              : product.stock != null && product.stock <= 5
+                                ? "destructive"
+                                : product.inStock
+                                  ? "default"
+                                  : "secondary"
+                          }
                           className="shrink-0"
                         >
-                          {product.inStock
-                            ? t("admin.inStock")
-                            : t("product.outOfStock")}
+                          {product.stock != null && product.stock <= 0
+                            ? t("product.outOfStock")
+                            : product.stock != null && product.stock <= 5
+                              ? t("product.lowStock", { count: product.stock })
+                              : t("admin.inStock")}
                         </Badge>
                         {product.featured && (
                           <Badge variant="outline" className="shrink-0">

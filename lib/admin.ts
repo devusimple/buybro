@@ -21,6 +21,7 @@ export type AdminCollection = InstaQLEntity<
 >
 export type AdminVariant = InstaQLEntity<AppSchema, "productVariants">
 export type AdminReview = InstaQLEntity<AppSchema, "reviews">
+export type AdminCoupon = InstaQLEntity<AppSchema, "coupons">
 export type AdminOrder = InstaQLEntity<
   AppSchema,
   "orders",

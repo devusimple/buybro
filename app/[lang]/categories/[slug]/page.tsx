@@ -1,13 +1,21 @@
 "use client"
 
+import { Suspense, useMemo } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useParams } from "next/navigation"
 
+import { FilterBar } from "@/components/catalog/filter-bar"
 import { ProductCard } from "@/components/product-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  availableVariantValues,
+  filterProducts,
+  sortProducts,
+  useCatalogFilters,
+} from "@/lib/catalog"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
 import type { Category, Product } from "@/lib/types"
@@ -32,9 +40,18 @@ function productInCategory(
   return false
 }
 
-export default function CategoryPage() {
+export default function CategoryPageRoute() {
+  return (
+    <Suspense fallback={null}>
+      <CategoryPage />
+    </Suspense>
+  )
+}
+
+function CategoryPage() {
   const { slug } = useParams<{ slug: string }>()
   const { t, locale } = useI18n()
+  const { filters, setFilters } = useCatalogFilters()
 
   const { data, isLoading, error } = clientDb.useQuery({
     categories: {
@@ -49,6 +66,29 @@ export default function CategoryPage() {
       collections: {},
     },
   })
+
+  const categories = useMemo(
+    () => (data?.categories ?? []) as Category[],
+    [data]
+  )
+  const products = useMemo(() => (data?.products ?? []) as Product[], [data])
+  const category = categories.find((item) => item.slug === slug)
+
+  const allProducts = useMemo<typeof products>(() => products, [products])
+  const { base, visible, variantOptions } = useMemo(() => {
+    if (!category) {
+      return { base: [], visible: [], variantOptions: [] }
+    }
+    const categoriesById = new Map(categories.map((item) => [item.id, item]))
+    const base = allProducts.filter((product) =>
+      productInCategory(product, category, categoriesById)
+    )
+    return {
+      base,
+      visible: sortProducts(filterProducts(base, filters), filters.sort),
+      variantOptions: availableVariantValues(base),
+    }
+  }, [allProducts, categories, category, filters])
 
   if (isLoading) {
     return (
@@ -78,10 +118,6 @@ export default function CategoryPage() {
     )
   }
 
-  const categories = (data?.categories ?? []) as Category[]
-  const products = (data?.products ?? []) as Product[]
-  const category = categories.find((item) => item.slug === slug)
-
   if (!category) {
     return (
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-24 sm:px-6">
@@ -103,12 +139,8 @@ export default function CategoryPage() {
     )
   }
 
-  const categoriesById = new Map(categories.map((item) => [item.id, item]))
   const children = (category.children ?? []).sort((a, b) =>
     a.name.localeCompare(b.name)
-  )
-  const visible = products.filter((product) =>
-    productInCategory(product, category, categoriesById)
   )
 
   return (
@@ -163,7 +195,17 @@ export default function CategoryPage() {
         </div>
       )}
 
-      {visible.length === 0 ? (
+      {base.length > 0 && (
+        <div className="mt-8 border-y border-border/60 py-4">
+          <FilterBar
+            filters={filters}
+            onChange={setFilters}
+            variantOptions={variantOptions}
+          />
+        </div>
+      )}
+
+      {base.length === 0 ? (
         <div className="flex flex-col gap-2 py-16">
           <h2 className="text-lg font-semibold uppercase">
             {t("categories.emptyTitle")}
@@ -171,6 +213,20 @@ export default function CategoryPage() {
           <p className="text-sm text-muted-foreground">
             {t("categories.emptyDescription")}
           </p>
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="flex flex-col gap-2 py-16">
+          <h2 className="text-lg font-semibold uppercase">
+            {t("catalog.noResults")}
+          </h2>
+          <Button
+            render={<Link href={`/${locale}/categories/${category.slug}`} />}
+            nativeButton={false}
+            variant="outline"
+            className="self-start"
+          >
+            {t("catalog.reset")}
+          </Button>
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

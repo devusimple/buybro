@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, BadgeCheck } from "lucide-react"
 import { useParams } from "next/navigation"
 
+import { ProductCard } from "@/components/product-card"
 import { RatingStars } from "@/components/product/rating"
 import { ReviewForm } from "@/components/product/review-form"
 import { Badge } from "@/components/ui/badge"
@@ -16,9 +17,9 @@ import { useCartStore } from "@/lib/cart-store"
 import { clientDb } from "@/lib/clientDb"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
-import { addRecentProduct } from "@/lib/recent"
+import { addRecentProduct, getRecentProductIds } from "@/lib/recent"
 import { sanitizeHtml } from "@/lib/sanitize"
-import type { Variant } from "@/lib/types"
+import type { Product, Variant } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 const richTextClasses =
@@ -41,6 +42,51 @@ function ProductView({ slug }: { slug: string }) {
   })
 
   const product = data?.products?.[0]
+
+  const { data: catalogData } = clientDb.useQuery({
+    products: {
+      image: {},
+      gallery: {},
+      variants: {},
+      category: { parent: { parent: {} } },
+      collections: {},
+    },
+  })
+
+  const catalogProducts = useMemo(
+    () => (catalogData?.products ?? []) as Product[],
+    [catalogData]
+  )
+
+  const relatedProducts = useMemo(() => {
+    if (!product) {
+      return []
+    }
+    const categoryId = product.category?.id
+    const sameCategory = categoryId
+      ? catalogProducts.filter(
+          (item) => item.id !== product.id && item.category?.id === categoryId
+        )
+      : []
+    const others = catalogProducts.filter((item) => item.id !== product.id)
+    return [...sameCategory, ...others]
+      .filter(
+        (item, index, arr) =>
+          arr.findIndex((other) => other.id === item.id) === index
+      )
+      .slice(0, 10)
+  }, [catalogProducts, product])
+
+  const recentProducts = useMemo(() => {
+    const byId = new Map(
+      catalogProducts.map((item) => [item.id, item] as const)
+    )
+    return getRecentProductIds()
+      .filter((id) => id !== product?.id)
+      .map((id) => byId.get(id))
+      .filter((item): item is Product => Boolean(item))
+      .slice(0, 10)
+  }, [catalogProducts, product])
 
   useEffect(() => {
     if (product) {
@@ -107,6 +153,21 @@ function ProductView({ slug }: { slug: string }) {
   const selectedOutOfStock = selectedOptions.some(
     ({ variant }) => variant?.stock === 0
   )
+
+  const selectedVariants = selectedOptions
+    .map(({ variant }) => variant)
+    .filter((variant): variant is Variant => Boolean(variant))
+  const stockValues = [
+    ...(product?.stock != null ? [product.stock] : []),
+    ...selectedVariants
+      .filter((variant) => variant.stock != null)
+      .map((variant) => variant.stock!),
+  ]
+  const availableStock: number | undefined =
+    stockValues.length > 0 ? Math.min(...stockValues) : undefined
+  const productUnavailable =
+    product?.inStock === false || (product?.stock != null && product.stock <= 0)
+  const isOutOfStock = productUnavailable || selectedOutOfStock
 
   const variantLabel =
     variantTitles.length > 0
@@ -277,6 +338,11 @@ function ProductView({ slug }: { slug: string }) {
               </span>
             )}
           </div>
+          {!isOutOfStock && availableStock != null && availableStock <= 5 && (
+            <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              {t("product.lowStock", { count: availableStock })}
+            </p>
+          )}
 
           {variantTitles.length > 0 && (
             <div className="flex flex-col gap-4">
@@ -323,15 +389,13 @@ function ProductView({ slug }: { slug: string }) {
           )}
 
           <p className="text-sm font-semibold tracking-widest uppercase">
-            {selectedOutOfStock || product.inStock === false
-              ? t("product.outOfStock")
-              : t("product.inStock")}
+            {isOutOfStock ? t("product.outOfStock") : t("product.inStock")}
           </p>
 
           <div className="flex flex-col gap-2">
             <Button
               size="lg"
-              disabled={product.inStock === false || selectedOutOfStock}
+              disabled={isOutOfStock}
               onClick={() =>
                 addItem({
                   id: product.id,
@@ -341,6 +405,8 @@ function ProductView({ slug }: { slug: string }) {
                   compareAtPriceCents: product.compareAtPriceCents,
                   imageUrl: activeGalleryImage?.url ?? product.image?.url,
                   variant: variantLabel,
+                  variantId: selectedVariants[0]?.id,
+                  stock: availableStock,
                 })
               }
             >
@@ -397,9 +463,20 @@ function ProductView({ slug }: { slug: string }) {
                 {reviews.map((review) => (
                   <li key={review.id} className="flex flex-col gap-2 py-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold">
-                        {review.authorName}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold">
+                          {review.authorName}
+                        </p>
+                        {review.verified && (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-primary/40 text-primary"
+                          >
+                            <BadgeCheck className="size-3" />
+                            {t("product.verifiedPurchase")}
+                          </Badge>
+                        )}
+                      </div>
                       <span className="text-xs text-muted-foreground">
                         {new Date(review.createdAt).toLocaleDateString(
                           locale === "bn" ? "bn-BD" : "en-US",
@@ -438,7 +515,39 @@ function ProductView({ slug }: { slug: string }) {
           </div>
         </div>
       </section>
+
+      <ProductRow title={t("product.related")} products={relatedProducts} />
+      <ProductRow
+        title={t("product.recentlyViewed")}
+        products={recentProducts}
+      />
     </div>
+  )
+}
+
+function ProductRow({
+  title,
+  products,
+}: {
+  title: string
+  products: Product[]
+}) {
+  if (products.length === 0) {
+    return null
+  }
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold tracking-tight uppercase">
+        {title}
+      </h2>
+      <div className="flex [scrollbar-width:none] gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        {products.slice(0, 10).map((product) => (
+          <div key={product.id} className="h-full w-40 shrink-0 sm:w-48">
+            <ProductCard product={product} />
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 

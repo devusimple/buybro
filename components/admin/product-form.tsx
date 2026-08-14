@@ -68,6 +68,9 @@ export function ProductFormDialog({
     product?.richDescription ?? ""
   )
   const [sku, setSku] = useState(product?.sku ?? "")
+  const [stock, setStock] = useState(
+    product?.stock != null ? String(product.stock) : ""
+  )
   const [price, setPrice] = useState(
     product ? String(product.priceCents / 100) : ""
   )
@@ -187,6 +190,7 @@ export function ProductFormDialog({
     try {
       const priceCents = Math.round(parseFloat(price || "0") * 100)
       const compareAt = parseFloat(compareAtPrice)
+      const parsedStock = parseInt(stock, 10)
       const payload = {
         name: name.trim(),
         slug: slug.trim() || slugify(name),
@@ -197,6 +201,10 @@ export function ProductFormDialog({
         compareAtPriceCents:
           Number.isFinite(compareAt) && compareAt > 0
             ? Math.round(compareAt * 100)
+            : undefined,
+        stock:
+          Number.isFinite(parsedStock) && parsedStock >= 0
+            ? parsedStock
             : undefined,
         inStock,
         featured,
@@ -405,6 +413,17 @@ export function ProductFormDialog({
                   value={sku}
                   placeholder="BB-1001"
                   onChange={(event) => setSku(event.target.value)}
+                />
+              </Field>
+              <Field label={t("admin.stock")} htmlFor="admin-product-stock">
+                <Input
+                  id="admin-product-stock"
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={stock}
+                  onChange={(event) => setStock(event.target.value)}
                 />
               </Field>
             </div>

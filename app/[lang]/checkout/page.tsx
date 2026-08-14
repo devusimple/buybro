@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useState } from "react"
 import type { User } from "@instantdb/react"
 import {
   Banknote,
@@ -13,6 +13,7 @@ import {
   Plus,
   ShoppingBag,
   Smartphone,
+  X,
 } from "lucide-react"
 
 import { SignInForm } from "@/components/auth/sign-in-form"
@@ -45,10 +46,17 @@ import {
   type CartItem,
 } from "@/lib/cart-store"
 import { clientDb } from "@/lib/clientDb"
+import {
+  computeDiscountCents,
+  couponError,
+  findCoupon,
+  normalizeCode,
+} from "@/lib/coupons"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
-import { placeOrder } from "@/lib/orders"
+import { placeOrder, type ShippingSnapshot, type StockLine } from "@/lib/orders"
 import type { Address } from "@/lib/profile"
+import type { Coupon } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 type PlacedOrder = {
@@ -119,15 +127,24 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       {user ? (
-        <CheckoutFlow user={user} items={items} onOrderPlaced={setPlaced} />
+        <CartCheckout user={user} items={items} onOrderPlaced={setPlaced} />
       ) : (
-        <SignInForm titleKey="auth.titleCheckout" />
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <SignInForm titleKey="auth.titleCheckout" />
+          <SummaryCard
+            items={items}
+            subtotal={selectSubtotal(items)}
+            discount={0}
+            locked
+            lockedNote={t("checkout.signInToPlace")}
+          />
+        </div>
       )}
     </div>
   )
 }
 
-function CheckoutFlow({
+function CartCheckout({
   user,
   items,
   onOrderPlaced,
@@ -137,6 +154,19 @@ function CheckoutFlow({
   onOrderPlaced: (order: PlacedOrder) => void
 }) {
   const { t } = useI18n()
+  const isGuest = !user.email
+
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [phone, setPhone] = useState("")
+  const [guestName, setGuestName] = useState("")
+  const [guestEmail, setGuestEmail] = useState("")
+  const [addOpen, setAddOpen] = useState(false)
+  const [placing, setPlacing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [couponInput, setCouponInput] = useState("")
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null)
+  const [couponMessage, setCouponMessage] = useState<string | null>(null)
+
   const { data, isLoading } = clientDb.useQuery({
     profiles: {
       $: { where: { ownerId: user.id } },
@@ -144,21 +174,28 @@ function CheckoutFlow({
     addresses: {
       $: { where: { ownerId: user.id }, order: { createdAt: "desc" } },
     },
+    products: {
+      variants: {},
+    },
+    coupons: {},
+    couponUsages: {
+      $: { where: { code: normalizeCode(couponInput) } },
+    },
   })
 
   const profile = data?.profiles?.[0]
   const addresses = data?.addresses ?? []
+  const coupons = (data?.coupons ?? []) as Coupon[]
+  const usageCount = data?.couponUsages?.length ?? 0
 
+  const phoneValue = phone || profile?.phone || ""
   const clear = useCartStore((state) => state.clear)
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [phone, setPhone] = useState(profile?.phone ?? "")
-  const [addOpen, setAddOpen] = useState(false)
-  const [placing, setPlacing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const subtotal = selectSubtotal(items)
-  const total = subtotal
+  const discount = appliedCoupon
+    ? computeDiscountCents(appliedCoupon, subtotal)
+    : 0
+  const total = Math.max(0, subtotal - discount)
   const count = selectCount(items)
 
   const selected =
@@ -166,17 +203,83 @@ function CheckoutFlow({
     addresses.find((address) => address.isDefault) ??
     addresses[0]
 
-  async function handlePlaceOrder() {
-    if (!selected) {
+  function handleApplyCoupon() {
+    const coupon = findCoupon(coupons, couponInput)
+    const errorKey = couponError(coupon, {
+      subtotalCents: subtotal,
+      usageCount,
+    })
+    if (errorKey || !coupon) {
+      setAppliedCoupon(null)
+      setCouponMessage(errorKey ? t(errorKey) : null)
       return
     }
+    setAppliedCoupon(coupon)
+    setCouponMessage(null)
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null)
+    setCouponMessage(null)
+  }
+
+  async function handlePlaceOrder() {
+    if (!selected || placing) {
+      return
+    }
+    const shipping: ShippingSnapshot = {
+      fullName: isGuest ? guestName.trim() : selected.fullName,
+      phone: phoneValue.trim(),
+      houseNo: selected.houseNo,
+      road: selected.road,
+      area: selected.area,
+      district: selected.district,
+      division: selected.division,
+      postalCode: selected.postalCode,
+      country: selected.country ?? "Bangladesh",
+    }
+    if (!shipping.fullName || !shipping.phone) {
+      setError(t("checkout.requiredDetails"))
+      return
+    }
+
     setPlacing(true)
     setError(null)
     try {
+      const productById = new Map(
+        (data?.products ?? []).map((product) => [product.id, product])
+      )
+      const stockLines: StockLine[] = items.map((item) => {
+        const product = productById.get(item.id)
+        const variant = product?.variants?.find(
+          (value) => value.value === item.variant
+        )
+        return {
+          ...item,
+          currentStock: product?.stock,
+          variantId: variant?.id,
+          variantStock: variant?.stock,
+        }
+      })
+      const lowStock = stockLines.find(
+        (line) =>
+          (line.currentStock != null && line.currentStock < line.quantity) ||
+          (line.variantId != null &&
+            line.variantStock != null &&
+            line.variantStock < line.quantity)
+      )
+      if (lowStock) {
+        throw new Error(t("checkout.outOfStock", { name: lowStock.name }))
+      }
+
       const orderId = await placeOrder({
         ownerId: user.id,
-        items,
-        totalCents: total,
+        ownerEmail: user.email ?? (guestEmail.trim() || undefined),
+        items: stockLines,
+        subtotalCents: subtotal,
+        discountCents: discount,
+        couponCode: appliedCoupon?.code,
+        shipping,
       })
       clear()
       onOrderPlaced({ orderId, totalCents: total, count })
@@ -186,6 +289,11 @@ function CheckoutFlow({
       setPlacing(false)
     }
   }
+
+  const canPlace =
+    Boolean(selected && phoneValue.trim()) &&
+    (isGuest ? Boolean(guestName.trim()) : true) &&
+    !placing
 
   return (
     <div className="flex flex-col gap-8">
@@ -200,6 +308,17 @@ function CheckoutFlow({
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-8">
+          {isGuest && (
+            <GuestDetailsCard
+              name={guestName}
+              email={guestEmail}
+              phone={phoneValue}
+              onNameChange={setGuestName}
+              onEmailChange={setGuestEmail}
+              onPhoneChange={setPhone}
+            />
+          )}
+
           <AddressCardSection
             user={user}
             addresses={addresses}
@@ -210,134 +329,148 @@ function CheckoutFlow({
             onAddOpenChange={setAddOpen}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("checkout.contactTitle")}</CardTitle>
-              <CardDescription>
-                {t("checkout.contactDescription")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t("checkout.email")} htmlFor="checkout-email">
-                  <Input
-                    id="checkout-email"
-                    type="email"
-                    value={user.email ?? t("auth.guestNoEmail")}
-                    disabled
-                    readOnly
-                  />
-                </Field>
-                <Field label={t("checkout.phone")} htmlFor="checkout-phone">
-                  <Input
-                    id="checkout-phone"
-                    type="tel"
-                    autoComplete="tel"
-                    placeholder={t("checkout.phonePlaceholder")}
-                    value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
-                  />
-                </Field>
-              </div>
-            </CardContent>
-          </Card>
+          <ContactCard
+            isGuest={isGuest}
+            phone={phoneValue}
+            onPhoneChange={setPhone}
+          />
 
           <PaymentMethodSection />
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("checkout.orderSummary")}</CardTitle>
-              <CardDescription>
-                {count === 1
-                  ? t("common.item", { count })
-                  : t("common.items", { count })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <ul className="flex flex-col gap-4">
-                {items.map((item) => (
-                  <li key={item.lineId} className="flex items-center gap-3">
-                    <div className="size-14 shrink-0 overflow-hidden bg-muted">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          width={56}
-                          height={56}
-                          className="size-full object-cover"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <p className="truncate text-xs font-semibold tracking-wider uppercase">
-                        {item.name}
-                      </p>
-                      {item.variant && (
-                        <p className="truncate text-[0.6875rem] text-muted-foreground">
-                          {item.variant}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {item.quantity} × {formatPrice(item.priceCents)}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm font-semibold">
-                      {formatPrice(item.priceCents * item.quantity)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold tracking-widest uppercase">
-                  {t("checkout.subtotal")}
-                </span>
-                <span className="text-sm">{formatPrice(subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold tracking-widest uppercase">
-                  {t("checkout.shipping")}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {t("common.free")}
-                </span>
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold tracking-widest uppercase">
-                  {t("checkout.total")}
-                </span>
-                <span className="text-lg font-semibold">
-                  {formatPrice(total)}
-                </span>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {t("checkout.totalNote")}
-              </p>
-
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              <Button
-                size="lg"
-                disabled={!selected || placing}
-                onClick={handlePlaceOrder}
-              >
-                {placing
-                  ? t("checkout.placingOrder")
-                  : t("checkout.placeOrder")}
-              </Button>
-            </CardContent>
-          </Card>
+          <SummaryCard
+            items={items}
+            subtotal={subtotal}
+            discount={discount}
+            couponInput={couponInput}
+            appliedCoupon={appliedCoupon}
+            couponError={couponMessage}
+            onCouponInput={setCouponInput}
+            onApplyCoupon={handleApplyCoupon}
+            onRemoveCoupon={handleRemoveCoupon}
+            error={error}
+            placing={placing}
+            canPlace={canPlace}
+            placeLabel={
+              placing ? t("checkout.placingOrder") : t("checkout.placeOrder")
+            }
+            onPlace={handlePlaceOrder}
+          />
         </aside>
       </div>
     </div>
+  )
+}
+
+function GuestDetailsCard({
+  name,
+  email,
+  phone,
+  onNameChange,
+  onEmailChange,
+  onPhoneChange,
+}: {
+  name: string
+  email: string
+  phone: string
+  onNameChange: (value: string) => void
+  onEmailChange: (value: string) => void
+  onPhoneChange: (value: string) => void
+}) {
+  const { t } = useI18n()
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("checkout.guestDetailsTitle")}</CardTitle>
+        <CardDescription>
+          {t("checkout.guestDetailsDescription")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t("checkout.guestName")} htmlFor="checkout-guest-name">
+            <Input
+              id="checkout-guest-name"
+              required
+              autoComplete="name"
+              placeholder={t("checkout.guestNamePlaceholder")}
+              value={name}
+              onChange={(event) => onNameChange(event.target.value)}
+            />
+          </Field>
+          <Field label={t("checkout.email")} htmlFor="checkout-guest-email">
+            <Input
+              id="checkout-guest-email"
+              type="email"
+              autoComplete="email"
+              placeholder={t("checkout.guestEmailPlaceholder")}
+              value={email}
+              onChange={(event) => onEmailChange(event.target.value)}
+            />
+          </Field>
+          <Field label={t("checkout.phone")} htmlFor="checkout-guest-phone">
+            <Input
+              id="checkout-guest-phone"
+              type="tel"
+              required
+              autoComplete="tel"
+              placeholder={t("checkout.phonePlaceholder")}
+              value={phone}
+              onChange={(event) => onPhoneChange(event.target.value)}
+            />
+          </Field>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ContactCard({
+  isGuest,
+  phone,
+  onPhoneChange,
+}: {
+  isGuest: boolean
+  phone: string
+  onPhoneChange: (value: string) => void
+}) {
+  const { t } = useI18n()
+  const { user } = clientDb.useAuth()
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("checkout.contactTitle")}</CardTitle>
+        <CardDescription>{t("checkout.contactDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t("checkout.email")} htmlFor="checkout-email">
+            <Input
+              id="checkout-email"
+              type="email"
+              value={
+                isGuest
+                  ? t("auth.guestNoEmail")
+                  : (user?.email ?? t("auth.guestNoEmail"))
+              }
+              disabled
+              readOnly
+            />
+          </Field>
+          <Field label={t("checkout.phone")} htmlFor="checkout-phone">
+            <Input
+              id="checkout-phone"
+              type="tel"
+              autoComplete="tel"
+              placeholder={t("checkout.phonePlaceholder")}
+              value={phone}
+              onChange={(event) => onPhoneChange(event.target.value)}
+            />
+          </Field>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -540,6 +673,194 @@ function PaymentMethodSection() {
   )
 }
 
+function SummaryCard({
+  items,
+  subtotal,
+  discount,
+  couponInput,
+  appliedCoupon,
+  couponError,
+  onCouponInput,
+  onApplyCoupon,
+  onRemoveCoupon,
+  error,
+  placing,
+  canPlace,
+  placeLabel,
+  onPlace,
+  locked,
+  lockedNote,
+}: {
+  items: CartItem[]
+  subtotal: number
+  discount: number
+  couponInput?: string
+  appliedCoupon?: Coupon | null
+  couponError?: string | null
+  onCouponInput?: (value: string) => void
+  onApplyCoupon?: () => void
+  onRemoveCoupon?: () => void
+  error?: string | null
+  placing?: boolean
+  canPlace?: boolean
+  placeLabel?: string
+  onPlace?: () => void
+  locked?: boolean
+  lockedNote?: string
+}) {
+  const { t } = useI18n()
+  const total = Math.max(0, subtotal - discount)
+  const count = selectCount(items)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("checkout.orderSummary")}</CardTitle>
+        <CardDescription>
+          {count === 1
+            ? t("common.item", { count })
+            : t("common.items", { count })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-4">
+          {items.map((item) => (
+            <li key={item.lineId} className="flex items-center gap-3">
+              <div className="size-14 shrink-0 overflow-hidden bg-muted">
+                {item.imageUrl ? (
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.name}
+                    width={56}
+                    height={56}
+                    className="size-full object-cover"
+                  />
+                ) : null}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <p className="truncate text-xs font-semibold tracking-wider uppercase">
+                  {item.name}
+                </p>
+                {item.variant && (
+                  <p className="truncate text-[0.6875rem] text-muted-foreground">
+                    {item.variant}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {item.quantity} × {formatPrice(item.priceCents)}
+                </p>
+              </div>
+              <span className="shrink-0 text-sm font-semibold">
+                {formatPrice(item.priceCents * item.quantity)}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        <Separator />
+
+        {!locked && (
+          <div className="flex flex-col gap-2">
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between gap-2 border border-dashed border-primary/40 bg-primary/5 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Badge variant="outline" className="border-primary/30">
+                    {appliedCoupon.code}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {t("checkout.applied")}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={t("checkout.removeCoupon")}
+                  onClick={onRemoveCoupon}
+                >
+                  <X />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  value={couponInput}
+                  onChange={(event) => onCouponInput?.(event.target.value)}
+                  placeholder={t("checkout.couponPlaceholder")}
+                  className="h-9 uppercase"
+                  aria-label={t("checkout.couponLabel")}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onApplyCoupon}
+                >
+                  {t("checkout.apply")}
+                </Button>
+              </div>
+            )}
+            {couponError && (
+              <p className="text-xs text-destructive">{couponError}</p>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold tracking-widest uppercase">
+            {t("checkout.subtotal")}
+          </span>
+          <span className="text-sm">{formatPrice(subtotal)}</span>
+        </div>
+        {discount > 0 && (
+          <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+            <span className="text-xs font-semibold tracking-widest uppercase">
+              {t("checkout.discount")}
+            </span>
+            <span className="text-sm">-{formatPrice(discount)}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold tracking-widest uppercase">
+            {t("checkout.shipping")}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {t("common.free")}
+          </span>
+        </div>
+
+        <Separator />
+
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold tracking-widest uppercase">
+            {t("checkout.total")}
+          </span>
+          <span className="text-lg font-semibold">{formatPrice(total)}</span>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {t("checkout.totalNote")}
+        </p>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        {locked ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground">{lockedNote}</p>
+            <Button size="lg" disabled>
+              {t("checkout.placeOrder")}
+            </Button>
+          </div>
+        ) : (
+          <Button size="lg" disabled={!canPlace || placing} onClick={onPlace}>
+            {placeLabel}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function OrderSuccess({ order }: { order: PlacedOrder }) {
   const { t, locale } = useI18n()
   return (
@@ -586,7 +907,7 @@ function OrderSuccess({ order }: { order: PlacedOrder }) {
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Button
-          render={<Link href={`/${locale}/profile`} />}
+          render={<Link href={`/${locale}/profile/orders/${order.orderId}`} />}
           nativeButton={false}
         >
           {t("checkout.trackOrder")}

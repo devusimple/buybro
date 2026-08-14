@@ -22,6 +22,17 @@ export function ReviewForm({
   user: User | null
 }) {
   const { t } = useI18n()
+  const { data: purchaseData } = clientDb.useQuery({
+    orderItems: {
+      $: { where: { "product.id": productId } },
+      order: {},
+    },
+  })
+  const hasPurchased =
+    user != null &&
+    (purchaseData?.orderItems ?? []).some(
+      (item) => item.order?.ownerId === user.id
+    )
   const [name, setName] = useState(user?.email?.split("@")[0] ?? "")
   const [email, setEmail] = useState(user?.email ?? "")
   const [reviewRating, setReviewRating] = useState(5)
@@ -47,6 +58,7 @@ export function ReviewForm({
         authorEmail: email.trim() || undefined,
         rating: reviewRating,
         comment: comment.trim() || undefined,
+        verified: hasPurchased || undefined,
         createdAt: Date.now(),
       })
       const chunk = tx.link({ product: productId })

@@ -28,4 +28,12 @@ export type Banner = InstaQLEntity<AppSchema, "banners", { image: {} }>
 export type Review = InstaQLEntity<AppSchema, "reviews">
 
 export type Variant = InstaQLEntity<AppSchema, "productVariants">
+
+export type Coupon = InstaQLEntity<AppSchema, "coupons">
+
+export type Wishlist = InstaQLEntity<
+  AppSchema,
+  "wishlists",
+  { products: { image: {} } }
+>
 /* eslint-enable @typescript-eslint/no-empty-object-type */

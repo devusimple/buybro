@@ -28,31 +28,109 @@ export const STATUS_VARIANTS: Record<
   cancelled: "destructive",
 }
 
+export const STATUS_ORDER = [
+  "pending",
+  "confirmed",
+  "shipped",
+  "delivered",
+] as const
+
+export type ShippingSnapshot = {
+  fullName: string
+  phone: string
+  houseNo: string
+  road?: string
+  area: string
+  district: string
+  division: string
+  postalCode: string
+  country?: string
+}
+
+export type StockLine = CartItem & {
+  currentStock?: number
+  variantStock?: number
+}
+
 export async function placeOrder({
   ownerId,
+  ownerEmail,
   items,
-  totalCents,
+  subtotalCents,
+  discountCents,
+  couponCode,
+  shipping,
 }: {
   ownerId: string
-  items: CartItem[]
-  totalCents: number
+  ownerEmail?: string
+  items: StockLine[]
+  subtotalCents: number
+  discountCents: number
+  couponCode?: string
+  shipping: ShippingSnapshot
 }) {
   const orderId = id()
   const createdAt = Date.now()
-  const txs = [
+  const totalCents = Math.max(0, subtotalCents - discountCents)
+
+  const txs: unknown[] = [
     clientDb.tx.orders[orderId].create({
       ownerId,
+      ownerEmail,
       status: "pending",
       totalCents,
+      subtotalCents,
+      discountCents,
+      couponCode,
+      shippingFullName: shipping.fullName,
+      shippingPhone: shipping.phone,
+      shippingHouseNo: shipping.houseNo,
+      shippingRoad: shipping.road,
+      shippingArea: shipping.area,
+      shippingDistrict: shipping.district,
+      shippingDivision: shipping.division,
+      shippingPostalCode: shipping.postalCode,
+      shippingCountry: shipping.country,
       createdAt,
     }),
-    ...items.map((item) => {
+    ...(couponCode
+      ? [
+          clientDb.tx.couponUsages[id()].create({
+            code: couponCode,
+            orderId,
+            createdAt,
+          }),
+        ]
+      : []),
+    ...items.flatMap((item) => {
       const itemId = id()
-      return clientDb.tx.orderItems[itemId]
-        .create({ quantity: item.quantity, priceCents: item.priceCents })
+      const stockTxs: unknown[] = []
+      if (item.currentStock != null) {
+        stockTxs.push(
+          clientDb.tx.products[item.id].update({
+            stock: Math.max(0, item.currentStock - item.quantity),
+          })
+        )
+      }
+      if (item.variantId && item.variantStock != null) {
+        stockTxs.push(
+          clientDb.tx.productVariants[item.variantId].update({
+            stock: Math.max(0, item.variantStock - item.quantity),
+          })
+        )
+      }
+      const orderItemTx = clientDb.tx.orderItems[itemId]
+        .create({
+          quantity: item.quantity,
+          priceCents: item.priceCents,
+          name: item.name,
+          variant: item.variant,
+        })
         .link({ order: orderId, product: item.id })
+      return [orderItemTx, ...stockTxs]
     }),
   ]
-  await clientDb.transact(txs)
+
+  await clientDb.transact(txs as Parameters<typeof clientDb.transact>[0])
   return orderId
 }

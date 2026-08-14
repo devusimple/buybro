@@ -12,6 +12,8 @@ export type CartProduct = {
   compareAtPriceCents?: number
   imageUrl?: string
   variant?: string
+  variantId?: string
+  stock?: number
 }
 
 export type CartItem = CartProduct & {
@@ -36,18 +38,25 @@ export const useCartStore = create<CartState>()(
           const lineId = product.variant
             ? `${product.id}::${product.variant}`
             : product.id
+          const cap = product.stock ?? Infinity
           const existing = state.items.find((item) => item.lineId === lineId)
           if (existing) {
             return {
               items: state.items.map((item) =>
                 item.lineId === lineId
-                  ? { ...item, quantity: item.quantity + 1 }
+                  ? {
+                      ...item,
+                      quantity: Math.min(item.quantity + 1, cap),
+                    }
                   : item
               ),
             }
           }
           return {
-            items: [...state.items, { ...product, lineId, quantity: 1 }],
+            items: [
+              ...state.items,
+              { ...product, lineId, quantity: Math.min(1, cap) },
+            ],
           }
         }),
       setQuantity: (lineId, quantity) =>
@@ -59,7 +68,15 @@ export const useCartStore = create<CartState>()(
           }
           return {
             items: state.items.map((item) =>
-              item.lineId === lineId ? { ...item, quantity } : item
+              item.lineId === lineId
+                ? {
+                    ...item,
+                    quantity:
+                      item.stock != null
+                        ? Math.min(quantity, item.stock)
+                        : quantity,
+                  }
+                : item
             ),
           }
         }),

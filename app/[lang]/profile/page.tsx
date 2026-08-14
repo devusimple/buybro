@@ -8,6 +8,7 @@ import { AddressBook } from "@/components/profile/address-book"
 import { AvatarSection } from "@/components/profile/avatar-section"
 import { GeneralInfoForm } from "@/components/profile/general-info-form"
 import { OrdersSection } from "@/components/profile/orders-section"
+import { WishlistSection } from "@/components/profile/wishlist-section"
 import { Skeleton } from "@/components/ui/skeleton"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
@@ -70,6 +71,7 @@ function ProfileDashboard({ user }: { user: User }) {
       </header>
 
       <OrdersSection user={user} />
+      <WishlistSection userId={user.id} />
       <AvatarSection user={user} profile={profile} loading={isLoading} />
       <GeneralInfoForm user={user} profile={profile} />
       <AddressBook user={user} addresses={addresses} />

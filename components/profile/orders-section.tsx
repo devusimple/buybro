@@ -54,49 +54,54 @@ function OrderCard({ order }: { order: Order }) {
   )
 
   return (
-    <div className="flex flex-col gap-4 border border-border/60 p-5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <p className="text-xs font-semibold tracking-widest uppercase">
-            {t("orders.orderPrefix")}
-            {order.id.slice(0, 8).toUpperCase()}
-          </p>
-          <p className="text-xs text-muted-foreground">{orderDate}</p>
-        </div>
-        <Badge variant={STATUS_VARIANTS[order.status] ?? "outline"}>
-          {statusLabel}
-        </Badge>
-      </div>
-      <Separator />
-      <div className="flex flex-col gap-2">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center justify-between gap-4 text-sm"
-          >
-            <span className="min-w-0 truncate text-muted-foreground">
-              <span className="font-medium text-foreground">
-                {item.quantity}×
-              </span>{" "}
-              {item.product?.name ?? t("orders.product")}
-            </span>
-            <span className="shrink-0">
-              {formatPrice((item.priceCents ?? 0) * (item.quantity ?? 1))}
-            </span>
+    <Link
+      href={`/${locale}/profile/orders/${order.id}`}
+      className="group block h-full"
+    >
+      <div className="flex h-full flex-col gap-4 border border-border/60 p-5 transition-colors group-hover:border-foreground/30">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-semibold tracking-widest uppercase">
+              {t("orders.orderPrefix")}
+              {order.id.slice(0, 8).toUpperCase()}
+            </p>
+            <p className="text-xs text-muted-foreground">{orderDate}</p>
           </div>
-        ))}
+          <Badge variant={STATUS_VARIANTS[order.status] ?? "outline"}>
+            {statusLabel}
+          </Badge>
+        </div>
+        <Separator />
+        <div className="flex flex-col gap-2">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-4 text-sm"
+            >
+              <span className="min-w-0 truncate text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {item.quantity}×
+                </span>{" "}
+                {item.product?.name ?? t("orders.product")}
+              </span>
+              <span className="shrink-0">
+                {formatPrice((item.priceCents ?? 0) * (item.quantity ?? 1))}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between border-t border-border/60 pt-3">
+          <span className="text-xs font-semibold tracking-widest uppercase">
+            {itemCount === 1
+              ? t("common.item", { count: itemCount })
+              : t("common.items", { count: itemCount })}
+          </span>
+          <span className="text-base font-semibold">
+            {formatPrice(order.totalCents)}
+          </span>
+        </div>
       </div>
-      <div className="flex items-center justify-between border-t border-border/60 pt-3">
-        <span className="text-xs font-semibold tracking-widest uppercase">
-          {itemCount === 1
-            ? t("common.item", { count: itemCount })
-            : t("common.items", { count: itemCount })}
-        </span>
-        <span className="text-base font-semibold">
-          {formatPrice(order.totalCents)}
-        </span>
-      </div>
-    </div>
+    </Link>
   )
 }
 

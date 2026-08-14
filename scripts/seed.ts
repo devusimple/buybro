@@ -16,6 +16,48 @@ const db = init({ appId, adminToken, schema })
 
 const DAY = 86_400_000
 
+type CouponSeed = {
+  code: string
+  discountType: "percent" | "flat"
+  value: number
+  minSubtotalCents?: number
+  maxDiscountCents?: number
+  usageLimit?: number
+  startsAt?: number
+  expiresAt?: number
+  active?: boolean
+}
+
+const coupons: CouponSeed[] = [
+  {
+    code: "WELCOME10",
+    discountType: "percent",
+    value: 10,
+    maxDiscountCents: 1000,
+    usageLimit: 500,
+    active: true,
+  },
+  {
+    code: "FLASH20",
+    discountType: "percent",
+    value: 20,
+    minSubtotalCents: 5000,
+    maxDiscountCents: 2500,
+    expiresAt: Date.now() + 30 * DAY,
+    usageLimit: 200,
+    active: true,
+  },
+  {
+    code: "SAVE500",
+    discountType: "flat",
+    value: 500,
+    minSubtotalCents: 3000,
+    expiresAt: Date.now() + 60 * DAY,
+    usageLimit: 100,
+    active: true,
+  },
+]
+
 type CategoryNode = {
   name: string
   slug: string
@@ -272,6 +314,7 @@ type ProductSeed = {
   compareAtPriceCents?: number
   featured?: boolean
   inStock?: boolean
+  stock?: number
   categorySlug: string
   collectionSlugs: string[]
   variants?: VariantSeed[]
@@ -318,6 +361,7 @@ const products: ProductSeed[] = [
       "20,000mAh of fast charging in a pocket-friendly slab that tops up two phones at once.",
     priceCents: 2499,
     compareAtPriceCents: 3299,
+    stock: 3,
     categorySlug: "power-banks",
     collectionSlugs: ["new-arrivals", "flash-sale"],
     variants: [
@@ -406,6 +450,7 @@ const products: ProductSeed[] = [
       "Cushioned, breathable and made for all-day wear. The pair you'll reach for daily.",
     priceCents: 4499,
     featured: true,
+    stock: 12,
     categorySlug: "shoes",
     collectionSlugs: ["best-sellers", "trending"],
     daysAgo: 11,
@@ -989,6 +1034,7 @@ async function main() {
           richDescription,
           rating,
           reviewCount: reviews.length,
+          ...(product.stock != null ? { stock: product.stock } : {}),
         })
       )
 
@@ -1080,6 +1126,7 @@ async function main() {
         compareAtPriceCents: product.compareAtPriceCents,
         featured: product.featured ?? false,
         inStock: product.inStock ?? true,
+        ...(product.stock != null ? { stock: product.stock } : {}),
         rating,
         reviewCount: reviews.length,
         createdAt,
@@ -1158,6 +1205,33 @@ async function main() {
       )
       console.log(`  + ${banner.title}`)
     }
+  }
+
+  console.log("Seeding coupons...")
+  for (const coupon of coupons) {
+    const existing = await db.query({
+      coupons: { $: { where: { code: coupon.code } } },
+    })
+    if (existing.coupons.length > 0) {
+      console.log(`  - ${coupon.code} (exists)`)
+      continue
+    }
+    const couponId = id()
+    await db.transact(
+      db.tx.coupons[couponId].create({
+        code: coupon.code,
+        discountType: coupon.discountType,
+        value: coupon.value,
+        minSubtotalCents: coupon.minSubtotalCents,
+        maxDiscountCents: coupon.maxDiscountCents,
+        active: coupon.active ?? true,
+        startsAt: coupon.startsAt,
+        expiresAt: coupon.expiresAt,
+        usageLimit: coupon.usageLimit,
+        createdAt: Date.now(),
+      })
+    )
+    console.log(`  + ${coupon.code}`)
   }
 
   console.log(

@@ -5,10 +5,17 @@ import { Suspense, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Search, X } from "lucide-react"
 
+import { FilterBar } from "@/components/catalog/filter-bar"
 import { ProductCard } from "@/components/product-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  availableVariantValues,
+  filterProducts,
+  sortProducts,
+  useCatalogFilters,
+} from "@/lib/catalog"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
 import { getRecentProductIds } from "@/lib/recent"
@@ -45,6 +52,7 @@ function SearchPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const query = searchParams.get("q") ?? ""
+  const catalog = useCatalogFilters()
 
   const { data, isLoading, error } = clientDb.useQuery({
     products: {
@@ -80,7 +88,7 @@ function SearchPage() {
 
   const normalized = query.trim().toLowerCase()
 
-  const results = useMemo(() => {
+  const base = useMemo(() => {
     if (!normalized) {
       return []
     }
@@ -90,6 +98,13 @@ function SearchPage() {
         .some((field) => field!.toLowerCase().includes(normalized))
     )
   }, [products, normalized])
+
+  const results = useMemo(
+    () =>
+      sortProducts(filterProducts(base, catalog.filters), catalog.filters.sort),
+    [base, catalog.filters]
+  )
+  const variantOptions = useMemo(() => availableVariantValues(base), [base])
 
   const suggestions = useMemo(() => {
     if (!trending) {
@@ -120,12 +135,32 @@ function SearchPage() {
 
   function handleChange(next: string) {
     setValue(next)
-    router.replace(
-      next
-        ? `/${locale}/search?q=${encodeURIComponent(next)}`
-        : `/${locale}/search`,
-      { scroll: false }
-    )
+    const params = new URLSearchParams()
+    if (next) {
+      params.set("q", next)
+    }
+    const sort = searchParams.get("sort")
+    const maxPrice = searchParams.get("maxPrice")
+    const minRating = searchParams.get("minRating")
+    const inStock = searchParams.get("inStock")
+    const discount = searchParams.get("discount")
+    const variants = searchParams.get("variants")
+    for (const [key, value] of [
+      ["sort", sort],
+      ["maxPrice", maxPrice],
+      ["minRating", minRating],
+      ["inStock", inStock],
+      ["discount", discount],
+      ["variants", variants],
+    ] as const) {
+      if (value) {
+        params.set(key, value)
+      }
+    }
+    const qs = params.toString()
+    router.replace(qs ? `/${locale}/search?${qs}` : `/${locale}/search`, {
+      scroll: false,
+    })
   }
 
   function handleClear() {
@@ -186,21 +221,52 @@ function SearchPage() {
         </p>
       ) : normalized ? (
         <div className="pt-10">
+          {base.length > 0 && (
+            <div className="border-y border-border/60 py-4">
+              <FilterBar
+                filters={catalog.filters}
+                onChange={catalog.setFilters}
+                variantOptions={variantOptions}
+              />
+            </div>
+          )}
           {results.length === 0 ? (
             <div className="flex flex-col items-start gap-3 py-10">
               <h2 className="text-lg font-semibold uppercase">
-                {t("search.noResultsTitle")}
+                {base.length === 0
+                  ? t("search.noResultsTitle")
+                  : t("catalog.noResults")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {t("search.noResultsDescription")}
+                {base.length === 0
+                  ? t("search.noResultsDescription")
+                  : t("catalog.reset")}
               </p>
-              <Button
-                render={<Link href={`/${locale}/categories`} />}
-                nativeButton={false}
-                variant="outline"
-              >
-                {t("search.browseCatalog")}
-              </Button>
+              {base.length === 0 ? (
+                <Button
+                  render={<Link href={`/${locale}/categories`} />}
+                  nativeButton={false}
+                  variant="outline"
+                >
+                  {t("search.browseCatalog")}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    catalog.setFilters({
+                      sort: catalog.filters.sort,
+                      maxPriceCents: null,
+                      minRating: null,
+                      inStockOnly: false,
+                      discountedOnly: false,
+                      variantValues: [],
+                    })
+                  }
+                >
+                  {t("catalog.reset")}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">

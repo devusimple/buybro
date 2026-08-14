@@ -46,30 +46,36 @@ const rules = {
   },
   orders: {
     allow: {
-      view: "isOwner || isAdmin",
+      view: "isOwner || isAdmin || isEmailMatch",
       create: "isOwner",
-      update: "isOwner || isAdmin",
+      update: "isOwner || isAdmin || isEmailMatch",
     },
     bind: {
       isOwner: "auth.id == data.ownerId",
       isAdmin: "'admin' in auth.ref('$user.roles.type')",
+      isEmailMatch: "data.ownerEmail in auth.ref('$user.email')",
     },
   },
   orderItems: {
     allow: {
-      view: "isAdmin || isOwner",
+      view: "isAdmin || isOwner || isEmailMatch",
       create: "isOwner",
     },
     bind: {
       isOwner: "auth.id in data.ref('order.ownerId')",
       isAdmin: "'admin' in auth.ref('$user.roles.type')",
+      isEmailMatch:
+        "data.ref('order.ownerEmail')[0] in auth.ref('$user.email')",
     },
   },
   products: {
     allow: {
       view: "true",
       create: "isAdmin",
-      update: "isAdmin",
+      // Stock decrements on checkout are made by the (guest or signed-in)
+      // customer placing the order. TODO(security): move to a server-side
+      // app once InstantDB server models land, so only a stock field changes.
+      update: "auth.id != null || isAdmin",
       delete: "isAdmin",
     },
     bind: {
@@ -80,7 +86,41 @@ const rules = {
     allow: {
       view: "true",
       create: "isAdmin",
+      update: "auth.id != null || isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
+  wishlists: {
+    allow: {
+      view: "isOwner || isAdmin",
+      create: "isOwner",
+      update: "isOwner",
+      delete: "isOwner",
+    },
+    bind: {
+      isOwner: "auth.id == data.ownerId",
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
+  coupons: {
+    allow: {
+      view: "true",
+      create: "isAdmin",
       update: "isAdmin",
+      delete: "isAdmin",
+    },
+    bind: {
+      isAdmin: "'admin' in auth.ref('$user.roles.type')",
+    },
+  },
+  couponUsages: {
+    allow: {
+      view: "true",
+      create: "true",
+      update: "false",
       delete: "isAdmin",
     },
     bind: {
