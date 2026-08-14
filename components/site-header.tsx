@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Bell, CircleUserRound, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -35,9 +36,16 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href={`/${locale}`}
-          className="text-sm font-semibold tracking-widest uppercase"
+          className="transition-opacity hover:opacity-80"
         >
-          {t("common.brand")}
+          <Image
+            src="/logo-1024x1024.png"
+            alt={t("common.brand")}
+            width={32}
+            height={32}
+            priority
+            className="object-contain"
+          />
         </Link>
         <nav className="flex items-center gap-6 text-xs font-medium tracking-widest text-muted-foreground uppercase">
           <Link

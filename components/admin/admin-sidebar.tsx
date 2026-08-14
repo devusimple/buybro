@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   CircleUserRound,
@@ -122,9 +123,13 @@ export function AdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:p-1.5!"
               render={<Link href={`/${locale}`} />}
             >
-              <span className="flex size-8 shrink-0 items-center justify-center bg-primary text-sm font-semibold text-primary-foreground">
-                {t("common.brand").slice(0, 1)}
-              </span>
+              <Image
+                src="/logo-1024x1024.png"
+                alt={t("common.brand")}
+                width={32}
+                height={32}
+                className="size-8 shrink-0 object-contain"
+              />
               <span className="text-base font-semibold tracking-widest uppercase">
                 {t("common.brand")}
               </span>

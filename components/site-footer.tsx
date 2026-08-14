@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 import { useI18n } from "@/lib/i18n"
 
@@ -8,6 +9,11 @@ const currentYear = new Date().getFullYear()
 
 export function SiteFooter() {
   const { t, locale } = useI18n()
+  const pathname = usePathname()
+
+  if (pathname.split("/").filter(Boolean)[1] === "admin") {
+    return null
+  }
 
   return (
     <footer className="border-t">
