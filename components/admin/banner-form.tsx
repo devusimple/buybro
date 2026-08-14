@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import type { AdminBanner } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
+import { isSvgFile } from "@/lib/utils"
 
 function toNumber(value: string) {
   const parsed = Number(value)
@@ -276,6 +277,7 @@ export function BannerFormDialog({
                     alt={title}
                     fill
                     sizes="(min-width: 1024px) 40vw, 90vw"
+                    unoptimized={isSvgFile(banner?.image?.path, previewUrl)}
                     className="object-cover"
                   />
                 ) : (

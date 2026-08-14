@@ -7,7 +7,7 @@ import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n"
 import type { Banner } from "@/lib/types"
-import { cn } from "@/lib/utils"
+import { cn, isSvgFile } from "@/lib/utils"
 
 export function BannerCard({ banner }: { banner: Banner }) {
   const { locale } = useI18n()
@@ -28,6 +28,7 @@ export function BannerCard({ banner }: { banner: Banner }) {
           alt={banner.title}
           fill
           sizes="100vw"
+          unoptimized={isSvgFile(banner.image?.path, banner.image?.url)}
           className="object-cover"
         />
       )}

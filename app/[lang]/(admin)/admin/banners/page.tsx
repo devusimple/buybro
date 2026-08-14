@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type { AdminBanner } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
+import { isSvgFile } from "@/lib/utils"
 
 export default function AdminBannersPage() {
   const { t } = useI18n()
@@ -132,6 +133,10 @@ export default function AdminBannersPage() {
                           alt={banner.title}
                           width={112}
                           height={45}
+                          unoptimized={isSvgFile(
+                            banner.image?.path,
+                            banner.image?.url
+                          )}
                           className="size-full object-cover"
                         />
                       ) : null}
