@@ -500,6 +500,7 @@ const en = {
     bannerSortOrder: "Sort order",
     bannerImageHint:
       "Wide crops work best. The top of the banner is left uncovered.",
+    bannerLivePreview: "Live preview",
     noBanners: "No banners yet",
     noBannersHint:
       "Add your first banner to promote products on the home page.",

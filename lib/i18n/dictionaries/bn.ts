@@ -505,6 +505,7 @@ const bn: Messages = {
     bannerSortOrder: "সাজানোর ক্রম",
     bannerImageHint:
       "লম্বা ছবি সবচেয়ে ভালো। ব্যানারের উপরের অংশটি ঢাকা থাকে না।",
+    bannerLivePreview: "লাইভ প্রিভিউ",
     noBanners: "এখনো কোনো ব্যানার নেই",
     noBannersHint: "হোমপেজে পণ্য প্রোমোট করতে প্রথম ব্যানার যোগ করুন।",
     activate: "সক্রিয় করুন",

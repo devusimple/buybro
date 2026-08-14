@@ -756,14 +756,7 @@ function makeSvg(title: string, label: string, from: string, to: string) {
 </svg>`
 }
 
-function makeBannerSvg(
-  title: string,
-  subtitle: string,
-  from: string,
-  to: string
-) {
-  const safeTitle = escapeXml(title)
-  const safeSubtitle = escapeXml(subtitle)
+function makeBannerSvg(from: string, to: string) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -775,8 +768,6 @@ function makeBannerSvg(
   <circle cx="1080" cy="90" r="180" fill="rgba(255,255,255,0.08)"/>
   <circle cx="980" cy="380" r="240" fill="rgba(255,255,255,0.06)"/>
   <rect x="56" y="56" width="1088" height="368" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-  <text x="80" y="210" font-family="Helvetica, Arial, sans-serif" font-size="52" font-weight="700" letter-spacing="4" fill="rgba(255,255,255,0.95)">${safeTitle}</text>
-  <text x="80" y="268" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="500" letter-spacing="3" fill="rgba(255,255,255,0.7)">${safeSubtitle}</text>
 </svg>`
 }
 
@@ -1180,12 +1171,7 @@ async function main() {
     console.log(`  - ${bannerCount} banner(s) already exist, skipping`)
   } else {
     for (const [index, banner] of banners.entries()) {
-      const svg = makeBannerSvg(
-        banner.title,
-        banner.subtitle,
-        banner.from,
-        banner.to
-      )
+      const svg = makeBannerSvg(banner.from, banner.to)
       const filePath = `banners/${index}.svg`
       const { data: file } = await db.storage.uploadFile(
         filePath,
