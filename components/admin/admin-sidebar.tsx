@@ -5,6 +5,7 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import {
   CircleUserRound,
+  Image as ImageIcon,
   LayoutDashboard,
   LogOut,
   MessageSquareText,
@@ -91,6 +92,11 @@ export function AdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
       title: t("admin.coupons"),
       href: `/${locale}/admin/coupons`,
       icon: TicketPercent,
+    },
+    {
+      title: t("admin.banners"),
+      href: `/${locale}/admin/banners`,
+      icon: ImageIcon,
     },
     {
       title: t("admin.reviews"),

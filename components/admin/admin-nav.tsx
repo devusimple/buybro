@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  Image as ImageIcon,
   LayoutDashboard,
   MessageSquareText,
   Package,
@@ -44,6 +45,11 @@ export function AdminNav() {
       href: `/${locale}/admin/coupons`,
       label: t("admin.coupons"),
       icon: TicketPercent,
+    },
+    {
+      href: `/${locale}/admin/banners`,
+      label: t("admin.banners"),
+      icon: ImageIcon,
     },
     {
       href: `/${locale}/admin/reviews`,

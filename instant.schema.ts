@@ -98,6 +98,8 @@ const _schema = i.schema({
       subtitle: i.string().optional(),
       ctaLabel: i.string().optional(),
       ctaHref: i.string().optional(),
+      active: i.boolean().indexed().optional(),
+      sortOrder: i.number().indexed().optional(),
     }),
     profiles: i.entity({
       ownerId: i.string().indexed(),

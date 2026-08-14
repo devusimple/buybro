@@ -34,6 +34,7 @@ export type AdminOrder = InstaQLEntity<
   "orders",
   { items: { product: {} } }
 >
+export type AdminBanner = InstaQLEntity<AppSchema, "banners", { image: {} }>
 export type AdminProfile = InstaQLEntity<AppSchema, "profiles">
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 

@@ -86,6 +86,7 @@ export function Feed() {
       parent: {},
     },
     banners: {
+      $: { order: { sortOrder: "asc" } },
       image: {},
     },
   })
@@ -135,7 +136,9 @@ export function Feed() {
   const products = (data?.products ?? []) as Product[]
   const collections = (data?.collections ?? []) as Collection[]
   const categories = (data?.categories ?? []) as Category[]
-  const banners = (data?.banners ?? []) as Banner[]
+  const banners = ((data?.banners ?? []) as Banner[]).filter(
+    (banner) => banner.active !== false
+  )
 
   const items = buildFeed(collections, banners, products, seed)
 

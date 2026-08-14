@@ -484,6 +484,27 @@ const en = {
     couponsTitle: "Promo codes",
     couponsDescription:
       "Create discount codes customers can apply at checkout.",
+    banners: "Banners",
+    bannersTitle: "Banners",
+    bannersDescription:
+      "Create and manage homepage promo banners. Deactivate to hide.",
+    addBanner: "Add banner",
+    editBanner: "Edit banner",
+    deleteBanner: "Delete banner",
+    bannerFormHint: "Create or update a homepage promo banner.",
+    bannerTitle: "Title",
+    bannerSubtitle: "Subtitle",
+    bannerCtaLabel: "Button label",
+    bannerCtaLabelPlaceholder: "Shop now",
+    bannerCtaHref: "Button link",
+    bannerSortOrder: "Sort order",
+    bannerImageHint:
+      "Wide crops work best. The top of the banner is left uncovered.",
+    noBanners: "No banners yet",
+    noBannersHint:
+      "Add your first banner to promote products on the home page.",
+    activate: "Activate",
+    deactivate: "Deactivate",
     addCoupon: "Add promo code",
     editCoupon: "Edit promo code",
     deleteCoupon: "Delete promo code",
