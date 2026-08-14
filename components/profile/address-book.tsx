@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { ChevronDown, MapPin, Pencil, Plus, Trash2 } from "lucide-react"
+import { MapPin, Pencil, Plus, Trash2 } from "lucide-react"
 import { id, type User } from "@instantdb/react"
 
 import { Field } from "@/components/profile/field"
@@ -30,6 +30,14 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
@@ -168,25 +176,32 @@ function AddressFields({
           </datalist>
         </Field>
         <Field label={t("addresses.division")} htmlFor="addr-division">
-          <div className="relative">
-            <select
+          <Select
+            value={values.division}
+            onValueChange={(value) => {
+              if (value !== null) {
+                set("division", value)
+              }
+            }}
+          >
+            <SelectTrigger
               id="addr-division"
-              required
-              className="h-10 w-full min-w-0 appearance-none border border-transparent border-b-input bg-transparent py-1 pr-6 text-base outline-none focus-visible:border-b-ring disabled:opacity-50 md:text-sm"
-              value={values.division}
-              onChange={(event) => set("division", event.target.value)}
+              aria-label={t("addresses.division")}
+              className="w-full"
+              size="sm"
             >
-              <option value="" disabled>
-                {t("addresses.selectDivision")}
-              </option>
-              {BANGLADESH_DIVISIONS.map((division) => (
-                <option key={division} value={division}>
-                  {division}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute top-1/2 right-0 size-4 -translate-y-1/2 text-muted-foreground" />
-          </div>
+              <SelectValue placeholder={t("addresses.selectDivision")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {BANGLADESH_DIVISIONS.map((division) => (
+                  <SelectItem key={division} value={division}>
+                    {division}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </Field>
       </div>
       <label className="flex items-center gap-2 text-sm">

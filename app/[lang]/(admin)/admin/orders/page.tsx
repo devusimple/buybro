@@ -20,6 +20,14 @@ import {
 } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { AdminOrder, AdminProfile } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
@@ -228,24 +236,36 @@ export default function AdminOrdersPage() {
                           <span className="font-semibold tracking-widest text-muted-foreground uppercase">
                             {t("admin.updateStatus")}
                           </span>
-                          <select
+                          <Select
                             value={order.status}
-                            onChange={(event) =>
-                              handleStatusChange(order, event.target.value)
-                            }
-                            className={cn(
-                              "h-9 min-w-0 appearance-none rounded-none border border-border/60 bg-transparent px-2 text-sm outline-none focus-visible:border-ring",
-                              order.status === "cancelled"
-                                ? "text-destructive"
-                                : "text-foreground"
-                            )}
+                            onValueChange={(value) => {
+                              if (value !== null && isOrderStatus(value)) {
+                                handleStatusChange(order, value)
+                              }
+                            }}
                           >
-                            {ORDER_STATUSES.map((status) => (
-                              <option key={status} value={status}>
-                                {statusLabel(t, status)}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger
+                              size="sm"
+                              aria-label={t("admin.updateStatus")}
+                              className={cn(
+                                "flex w-36 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate",
+                                order.status === "cancelled"
+                                  ? "text-destructive"
+                                  : "text-foreground"
+                              )}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {ORDER_STATUSES.map((status) => (
+                                  <SelectItem key={status} value={status}>
+                                    {statusLabel(t, status)}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
                         </label>
                       </div>
                     </div>

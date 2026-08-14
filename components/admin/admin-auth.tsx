@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useRouter } from "next/navigation"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 
 import { Button } from "@/components/ui/button"
@@ -18,14 +19,40 @@ const OTP_LENGTH = 6
 
 export function AdminAuth() {
   const { t } = useI18n()
+  const router = useRouter()
   const { user } = clientDb.useAuth()
   const [step, setStep] = useState<"email" | "code">("email")
   const [email, setEmail] = useState("")
   const [code, setCode] = useState("")
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isSignedIn = !!user && !user.isGuest
+
+  // The admin gate now runs on the server from the auth cookie. After a
+  // successful sign-in re-render the server layout so it can re-check roles.
+  useEffect(() => {
+    if (!isSignedIn) {
+      return
+    }
+    const attempt = (times: number) => {
+      if (times === 0) {
+        refreshTimer.current = null
+        return
+      }
+      refreshTimer.current = setTimeout(() => {
+        router.refresh()
+        attempt(times - 1)
+      }, 700)
+    }
+    attempt(3)
+    return () => {
+      if (refreshTimer.current) {
+        clearTimeout(refreshTimer.current)
+      }
+    }
+  }, [isSignedIn, router])
 
   async function handleSendCode(event: FormEvent) {
     event.preventDefault()

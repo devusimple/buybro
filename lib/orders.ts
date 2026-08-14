@@ -1,7 +1,6 @@
-import { id } from "@instantdb/react"
+import type { User } from "@instantdb/react"
 
 import type { CartItem } from "@/lib/cart-store"
-import { clientDb } from "@/lib/clientDb"
 
 export const ORDER_STATUSES = [
   "pending",
@@ -47,95 +46,58 @@ export type ShippingSnapshot = {
   country?: string
 }
 
-export type StockLine = CartItem & {
-  currentStock?: number
-  variantStock?: number
-}
-
 export type PaymentMethod = "cod" | "online"
 
+export type CheckoutSuccess = {
+  ok: true
+  orderId: string
+  totalCents: number
+  count: number
+}
+
+export type CheckoutFailure = {
+  ok: false
+  error: string
+  params?: Record<string, string>
+}
+
+export type CheckoutResponse = CheckoutSuccess | CheckoutFailure
+
 export async function placeOrder({
-  ownerId,
+  user,
   ownerEmail,
   items,
-  subtotalCents,
-  discountCents,
   couponCode,
   paymentMethod,
   shipping,
 }: {
-  ownerId: string
+  user: User
   ownerEmail?: string
-  items: StockLine[]
-  subtotalCents: number
-  discountCents: number
+  items: CartItem[]
   couponCode?: string
   paymentMethod: PaymentMethod
   shipping: ShippingSnapshot
-}) {
-  const orderId = id()
-  const createdAt = Date.now()
-  const totalCents = Math.max(0, subtotalCents - discountCents)
-
-  const txs: unknown[] = [
-    clientDb.tx.orders[orderId].create({
-      ownerId,
-      ownerEmail,
-      status: "pending",
-      paymentMethod,
-      totalCents,
-      subtotalCents,
-      discountCents,
-      couponCode,
-      shippingFullName: shipping.fullName,
-      shippingPhone: shipping.phone,
-      shippingHouseNo: shipping.houseNo,
-      shippingRoad: shipping.road,
-      shippingArea: shipping.area,
-      shippingDistrict: shipping.district,
-      shippingDivision: shipping.division,
-      shippingPostalCode: shipping.postalCode,
-      shippingCountry: shipping.country,
-      createdAt,
-    }),
-    ...(couponCode
-      ? [
-          clientDb.tx.couponUsages[id()].create({
-            code: couponCode,
-            orderId,
-            createdAt,
-          }),
-        ]
-      : []),
-    ...items.flatMap((item) => {
-      const itemId = id()
-      const stockTxs: unknown[] = []
-      if (item.currentStock != null) {
-        stockTxs.push(
-          clientDb.tx.products[item.id].update({
-            stock: Math.max(0, item.currentStock - item.quantity),
-          })
-        )
-      }
-      if (item.variantId && item.variantStock != null) {
-        stockTxs.push(
-          clientDb.tx.productVariants[item.variantId].update({
-            stock: Math.max(0, item.variantStock - item.quantity),
-          })
-        )
-      }
-      const orderItemTx = clientDb.tx.orderItems[itemId]
-        .create({
-          quantity: item.quantity,
-          priceCents: item.priceCents,
-          name: item.name,
+}): Promise<CheckoutResponse> {
+  try {
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        refreshToken: user.refresh_token,
+        ownerEmail,
+        items: items.map((item) => ({
+          id: item.id,
           variant: item.variant,
-        })
-        .link({ order: orderId, product: item.id })
-      return [orderItemTx, ...stockTxs]
-    }),
-  ]
-
-  await clientDb.transact(txs as Parameters<typeof clientDb.transact>[0])
-  return orderId
+          quantity: item.quantity,
+        })),
+        couponCode,
+        paymentMethod,
+        shipping,
+      }),
+    })
+    const data = await response.json()
+    return data
+  } catch {
+    return { ok: false, error: "checkout.placeError" }
+  }
 }

@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from "react"
 import { id } from "@instantdb/react"
-import { ChevronDown } from "lucide-react"
 
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
@@ -15,9 +14,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { AdminCategory } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
+
+const NONE_PARENT = "__none__"
 
 function slugify(value: string) {
   return value
@@ -141,26 +150,36 @@ export function CategoryFormDialog({
               label={t("admin.parentCategory")}
               htmlFor="admin-category-parent"
             >
-              <div className="relative">
-                <select
+              <Select
+                value={parentId || NONE_PARENT}
+                onValueChange={(value) =>
+                  setParentId(value && value !== NONE_PARENT ? value : "")
+                }
+              >
+                <SelectTrigger
                   id="admin-category-parent"
-                  value={parentId}
-                  onChange={(event) => setParentId(event.target.value)}
-                  className="h-10 w-full min-w-0 appearance-none border border-transparent border-b-input bg-transparent py-1 pr-6 text-base outline-none focus-visible:border-b-ring md:text-sm"
+                  aria-label={t("admin.parentCategory")}
+                  className="w-full"
                 >
-                  <option value="">{t("admin.none")}</option>
-                  {categories
-                    .filter((option) => option.id !== category?.id)
-                    .map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.parent?.name
-                          ? `${option.parent.name} / ${option.name}`
-                          : option.name}
-                      </option>
-                    ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute top-1/2 right-0 size-4 -translate-y-1/2 text-muted-foreground" />
-              </div>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={NONE_PARENT}>
+                      {t("admin.none")}
+                    </SelectItem>
+                    {categories
+                      .filter((option) => option.id !== category?.id)
+                      .map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.parent?.name
+                            ? `${option.parent.name} / ${option.name}`
+                            : option.name}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </Field>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter className="pt-2">

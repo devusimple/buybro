@@ -10,8 +10,10 @@ import { useI18n, type TranslationKey } from "@/lib/i18n"
 
 export function SignInForm({
   titleKey = "auth.title",
+  showGuest = true,
 }: {
   titleKey?: TranslationKey
+  showGuest?: boolean
 }) {
   const { t } = useI18n()
   const [step, setStep] = useState<"email" | "code">("email")
@@ -133,17 +135,19 @@ export function SignInForm({
         </form>
       )}
 
-      <div className="flex flex-col gap-4">
-        <Separator />
-        <Button
-          type="button"
-          variant="outline"
-          disabled={pending}
-          onClick={handleGuest}
-        >
-          {t("auth.guest")}
-        </Button>
-      </div>
+      {showGuest && (
+        <div className="flex flex-col gap-4">
+          <Separator />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={handleGuest}
+          >
+            {t("auth.guest")}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

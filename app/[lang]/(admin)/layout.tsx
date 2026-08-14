@@ -1,40 +1,42 @@
-"use client"
+import { getUnverifiedUserFromInstantCookie } from "@instantdb/react/nextjs"
 
 import { AdminAuth } from "@/components/admin/admin-auth"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
-import { Skeleton } from "@/components/ui/skeleton"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { useIsAdmin } from "@/lib/admin"
-import { clientDb } from "@/lib/clientDb"
+import { adminDb } from "@/lib/adminDb"
 
-export default function AdminLayout({
+async function requestHasAdminRole() {
+  try {
+    const claimed = await getUnverifiedUserFromInstantCookie(
+      process.env.NEXT_PUBLIC_INSTANT_APP_ID!
+    )
+    if (!claimed?.refresh_token) {
+      return false
+    }
+    const user = await adminDb.auth.verifyToken(claimed.refresh_token)
+    if (!user?.id) {
+      return false
+    }
+    const { $users } = await adminDb.query({
+      $users: { $: { where: { id: user.id } }, roles: {} },
+    })
+    return ($users?.[0]?.roles ?? []).some(
+      (role) => (role as { type?: unknown }).type === "admin"
+    )
+  } catch {
+    return false
+  }
+}
+
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user, isLoading, error } = clientDb.useAuth()
-  const { isAdmin, isLoading: rolesLoading } = useIsAdmin()
+  const isAdmin = await requestHasAdminRole()
 
-  if (isLoading || rolesLoading) {
-    return (
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-12 sm:px-6">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-        <p className="text-sm text-destructive">{error.message}</p>
-      </div>
-    )
-  }
-
-  if (!user || !isAdmin) {
+  if (!isAdmin) {
     return <AdminAuth />
   }
 

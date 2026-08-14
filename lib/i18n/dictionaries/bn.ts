@@ -160,6 +160,7 @@ const bn: Messages = {
   auth: {
     title: "সাইন ইন",
     titleCheckout: "চেকআউট করতে সাইন ইন করুন",
+    titleReview: "রিভিউ দিতে সাইন ইন করুন",
     emailPrompt: "আপনার ইমেইল দিন, আমরা একটি ওয়ান-টাইম কোড পাঠাব।",
     codePrompt: "{email}-এ পাঠানো কোডটি লিখুন।",
     email: "ইমেইল",

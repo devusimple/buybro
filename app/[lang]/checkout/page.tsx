@@ -53,12 +53,11 @@ import {
   normalizeCode,
 } from "@/lib/coupons"
 import { formatPrice } from "@/lib/format"
-import { useI18n } from "@/lib/i18n"
+import { useI18n, type TranslationKey } from "@/lib/i18n"
 import {
   placeOrder,
   type PaymentMethod,
   type ShippingSnapshot,
-  type StockLine,
 } from "@/lib/orders"
 import type { Address } from "@/lib/profile"
 import type { Coupon } from "@/lib/types"
@@ -180,9 +179,6 @@ function CartCheckout({
     addresses: {
       $: { where: { ownerId: user.id }, order: { createdAt: "desc" } },
     },
-    products: {
-      variants: {},
-    },
     coupons: {},
     couponUsages: {
       $: { where: { code: normalizeCode(couponInput) } },
@@ -201,8 +197,6 @@ function CartCheckout({
   const discount = appliedCoupon
     ? computeDiscountCents(appliedCoupon, subtotal)
     : 0
-  const total = Math.max(0, subtotal - discount)
-  const count = selectCount(items)
 
   const selected =
     addresses.find((address) => address.id === selectedId) ??
@@ -252,44 +246,24 @@ function CartCheckout({
     setPlacing(true)
     setError(null)
     try {
-      const productById = new Map(
-        (data?.products ?? []).map((product) => [product.id, product])
-      )
-      const stockLines: StockLine[] = items.map((item) => {
-        const product = productById.get(item.id)
-        const variant = product?.variants?.find(
-          (value) => value.value === item.variant
-        )
-        return {
-          ...item,
-          currentStock: product?.stock,
-          variantId: variant?.id,
-          variantStock: variant?.stock,
-        }
-      })
-      const lowStock = stockLines.find(
-        (line) =>
-          (line.currentStock != null && line.currentStock < line.quantity) ||
-          (line.variantId != null &&
-            line.variantStock != null &&
-            line.variantStock < line.quantity)
-      )
-      if (lowStock) {
-        throw new Error(t("checkout.outOfStock", { name: lowStock.name }))
-      }
-
-      const orderId = await placeOrder({
-        ownerId: user.id,
-        ownerEmail: user.email ?? (guestEmail.trim() || undefined),
-        items: stockLines,
-        subtotalCents: subtotal,
-        discountCents: discount,
+      const result = await placeOrder({
+        user,
+        ownerEmail: isGuest ? guestEmail.trim() || undefined : undefined,
+        items,
         couponCode: appliedCoupon?.code,
         paymentMethod,
         shipping,
       })
+      if (!result.ok) {
+        setError(t(result.error as TranslationKey, result.params ?? {}))
+        return
+      }
       clear()
-      onOrderPlaced({ orderId, totalCents: total, count })
+      onOrderPlaced({
+        orderId: result.orderId,
+        totalCents: result.totalCents,
+        count: result.count,
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : t("checkout.placeError"))
     } finally {

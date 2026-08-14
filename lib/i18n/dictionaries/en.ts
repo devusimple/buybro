@@ -159,6 +159,7 @@ const en = {
   auth: {
     title: "Sign in",
     titleCheckout: "Sign in to check out",
+    titleReview: "Sign in to leave a review",
     emailPrompt: "Enter your email and we'll send you a one-time code.",
     codePrompt: "Enter the code we sent to {email}.",
     email: "Email",

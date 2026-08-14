@@ -4,5 +4,6 @@ import schema from "@/instant.schema"
 
 export const clientDb = init({
   appId: process.env.NEXT_PUBLIC_INSTANT_APP_ID!,
+  firstPartyPath: "/api/instant",
   schema,
 })

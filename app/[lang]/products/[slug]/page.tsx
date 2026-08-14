@@ -7,10 +7,11 @@ import { ArrowLeft, BadgeCheck, ChevronDown, ThumbsUp } from "lucide-react"
 import { useParams } from "next/navigation"
 import type { InstaQLEntity } from "@instantdb/react"
 
-import type { AppSchema } from "@/instant.schema"
+import { AppSchema } from "@/instant.schema"
 import { ProductCard } from "@/components/product-card"
 import { RatingStars } from "@/components/product/rating"
 import { ReviewForm } from "@/components/product/review-form"
+import { SignInForm } from "@/components/auth/sign-in-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -647,12 +648,11 @@ function ProductView({ slug }: { slug: string }) {
             <h3 className="text-sm font-semibold tracking-tight uppercase">
               {t("product.writeReview")}
             </h3>
-            <ReviewForm
-              productId={product.id}
-              rating={product.rating}
-              reviewCount={product.reviewCount}
-              user={user ?? null}
-            />
+            {user ? (
+              <ReviewForm productId={product.id} user={user} />
+            ) : (
+              <SignInForm titleKey="auth.titleReview" showGuest={false} />
+            )}
           </div>
         </div>
       </section>

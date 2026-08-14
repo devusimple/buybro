@@ -46,7 +46,12 @@ export function toCsv(rows: (string | number | null | undefined)[][]): string {
       row
         .map((cell) => {
           const value = cell == null ? "" : String(cell)
-          return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+          // Neutralize Excel formula injection: cells beginning with a
+          // formula marker must not be interpreted as expressions.
+          const escaped = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+          return /[",\n]/.test(escaped)
+            ? `"${escaped.replace(/"/g, '""')}"`
+            : escaped
         })
         .join(",")
     )

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react"
 import { id } from "@instantdb/react"
-import { ChevronDown, Dices } from "lucide-react"
+import { Dices } from "lucide-react"
 
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { AdminCoupon } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { isDiscountType, normalizeCode } from "@/lib/coupons"
@@ -153,22 +161,31 @@ export function CouponFormDialog({
                 label={t("admin.discountType")}
                 htmlFor="admin-coupon-type"
               >
-                <div className="relative">
-                  <select
+                <Select
+                  value={discountType}
+                  onValueChange={(value) => {
+                    if (value !== null) {
+                      setDiscountType(value)
+                    }
+                  }}
+                >
+                  <SelectTrigger
                     id="admin-coupon-type"
-                    required
-                    value={discountType}
-                    onChange={(event) => setDiscountType(event.target.value)}
-                    className="h-10 w-full min-w-0 appearance-none border border-transparent border-b-input bg-transparent py-1 pr-6 text-base outline-none focus-visible:border-b-ring disabled:opacity-50 md:text-sm"
+                    aria-label={t("admin.discountType")}
+                    className="w-full"
+                    size="sm"
                   >
-                    <option value="" disabled>
-                      {t("admin.selectType")}
-                    </option>
-                    <option value="percent">{t("admin.percent")}</option>
-                    <option value="flat">{t("admin.flat")}</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute top-1/2 right-0 size-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                    <SelectValue placeholder={t("admin.selectType")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="percent">
+                        {t("admin.percent")}
+                      </SelectItem>
+                      <SelectItem value="flat">{t("admin.flat")}</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </Field>
               <Field
                 label={

@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react"
 import Image from "next/image"
-import { ChevronDown, Plus, Trash2, X } from "lucide-react"
+import { Plus, Trash2, X } from "lucide-react"
 import { id, type User } from "@instantdb/react"
 
 import { RichTextEditor } from "@/components/admin/rich-text-editor"
@@ -17,10 +17,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { AdminCategory, AdminCollection, AdminProduct } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
 import { sanitizeHtml } from "@/lib/sanitize"
+
+const NONE_CATEGORY = "__none__"
 
 function slugify(value: string) {
   return value
@@ -497,22 +507,33 @@ export function ProductFormDialog({
                 label={t("admin.category")}
                 htmlFor="admin-product-category"
               >
-                <div className="relative">
-                  <select
+                <Select
+                  value={categoryId || NONE_CATEGORY}
+                  onValueChange={(value) =>
+                    setCategoryId(value && value !== NONE_CATEGORY ? value : "")
+                  }
+                >
+                  <SelectTrigger
                     id="admin-product-category"
-                    value={categoryId}
-                    onChange={(event) => setCategoryId(event.target.value)}
-                    className="h-10 w-full min-w-0 appearance-none border border-transparent border-b-input bg-transparent py-1 pr-6 text-base outline-none focus-visible:border-b-ring md:text-sm"
+                    aria-label={t("admin.category")}
+                    className="w-full"
+                    size="sm"
                   >
-                    <option value="">{t("admin.none")}</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute top-1/2 right-0 size-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={NONE_CATEGORY}>
+                        {t("admin.none")}
+                      </SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </Field>
               <div className="flex flex-wrap content-end gap-6 pb-1">
                 <label className="flex items-center gap-2 text-sm">

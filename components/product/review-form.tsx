@@ -19,27 +19,12 @@ type MediaUpload = {
 
 export function ReviewForm({
   productId,
-  rating,
-  reviewCount,
   user,
 }: {
   productId: string
-  rating: number | undefined
-  reviewCount: number | undefined
-  user: User | null
+  user: User
 }) {
   const { t } = useI18n()
-  const { data: purchaseData } = clientDb.useQuery({
-    orderItems: {
-      $: { where: { "product.id": productId } },
-      order: {},
-    },
-  })
-  const hasPurchased =
-    user != null &&
-    (purchaseData?.orderItems ?? []).some(
-      (item) => item.order?.ownerId === user.id
-    )
   const [name, setName] = useState(user?.email?.split("@")[0] ?? "")
   const [email, setEmail] = useState(user?.email ?? "")
   const [reviewRating, setReviewRating] = useState(5)
@@ -80,7 +65,7 @@ export function ReviewForm({
     try {
       const reviewId = id()
       const mediaIds: string[] = []
-      if (user && media.length > 0) {
+      if (media.length > 0) {
         for (const upload of media) {
           const path = `${user.id}/reviews/${reviewId}-${Date.now()}-${upload.file.name}`
           const { data: fileData } = await clientDb.storage.uploadFile(
@@ -91,34 +76,25 @@ export function ReviewForm({
           mediaIds.push(fileData.id)
         }
       }
-      const currentCount = reviewCount ?? 0
-      const nextCount = currentCount + 1
-      const nextRating =
-        Math.round(
-          (((rating ?? 0) * currentCount + reviewRating) / nextCount) * 10
-        ) / 10
-      const tx = clientDb.tx.reviews[reviewId].create({
-        authorName: name.trim(),
-        authorEmail: email.trim() || undefined,
-        rating: reviewRating,
-        comment: comment.trim() || undefined,
-        verified: hasPurchased || undefined,
-        createdAt: Date.now(),
-      })
-      const chunk = tx.link({ product: productId })
-      if (mediaIds.length > 0) {
-        chunk.link({ media: mediaIds })
-      }
-      if (user) {
-        chunk.link({ author: user.id })
-      }
-      await clientDb.transact([
-        chunk,
-        clientDb.tx.products[productId].update({
-          rating: nextRating,
-          reviewCount: nextCount,
+
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refreshToken: user.refresh_token,
+          productId,
+          rating: reviewRating,
+          comment,
+          authorName: name.trim(),
+          authorEmail: email.trim() || undefined,
+          mediaIds,
         }),
-      ])
+      })
+      const data = await response.json()
+      if (!data.ok) {
+        setError(t(data.error ?? "product.reviewError"))
+        return
+      }
       setSubmitted(true)
       setComment("")
       setMedia((current) => {
@@ -196,59 +172,57 @@ export function ReviewForm({
         />
       </Field>
 
-      {user && (
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold tracking-widest uppercase">
-            {t("product.reviewMedia")}
-          </label>
-          {media.length > 0 && (
-            <div className="grid grid-cols-4 gap-2">
-              {media.map((upload, index) => (
-                <div
-                  key={upload.url}
-                  className="group relative aspect-square overflow-hidden bg-muted"
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-semibold tracking-widest uppercase">
+          {t("product.reviewMedia")}
+        </label>
+        {media.length > 0 && (
+          <div className="grid grid-cols-4 gap-2">
+            {media.map((upload, index) => (
+              <div
+                key={upload.url}
+                className="group relative aspect-square overflow-hidden bg-muted"
+              >
+                {upload.file.type.startsWith("image/") ? (
+                  <Image
+                    src={upload.url}
+                    alt=""
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="[display:-webkit-box] flex h-full items-center justify-center overflow-hidden p-1 text-center text-[0.625rem] tracking-widest text-ellipsis text-muted-foreground uppercase [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                    {upload.file.name}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  aria-label={t("product.reviewRemoveMedia")}
+                  onClick={() => removeMedia(index)}
+                  className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm hover:text-destructive"
                 >
-                  {upload.file.type.startsWith("image/") ? (
-                    <Image
-                      src={upload.url}
-                      alt=""
-                      fill
-                      sizes="96px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <span className="[display:-webkit-box] flex h-full items-center justify-center overflow-hidden p-1 text-center text-[0.625rem] tracking-widest text-ellipsis text-muted-foreground uppercase [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                      {upload.file.name}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    aria-label={t("product.reviewRemoveMedia")}
-                    onClick={() => removeMedia(index)}
-                    className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-background/90 text-muted-foreground shadow-sm hover:text-destructive"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="flex items-center gap-3">
-            <Input
-              ref={mediaRef}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              className="max-w-xs"
-              onChange={(event) => handleMediaFiles(event.target.files)}
-            />
-            <Camera className="size-4 shrink-0 text-muted-foreground" />
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {t("product.reviewMediaHint")}
-          </p>
+        )}
+        <div className="flex items-center gap-3">
+          <Input
+            ref={mediaRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="max-w-xs"
+            onChange={(event) => handleMediaFiles(event.target.files)}
+          />
+          <Camera className="size-4 shrink-0 text-muted-foreground" />
         </div>
-      )}
+        <p className="text-xs text-muted-foreground">
+          {t("product.reviewMediaHint")}
+        </p>
+      </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
