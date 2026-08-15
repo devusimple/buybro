@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Image as ImageIcon, Pencil, Plus, Trash2 } from "lucide-react"
 
-import { BannerFormDialog } from "@/components/admin/banner-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,10 +28,7 @@ import { useI18n } from "@/lib/i18n"
 import { isSvgFile } from "@/lib/utils"
 
 export default function AdminBannersPage() {
-  const { t } = useI18n()
-  const { user } = clientDb.useAuth()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<AdminBanner | null>(null)
+  const { t, locale } = useI18n()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -43,16 +40,6 @@ export default function AdminBannersPage() {
   })
 
   const banners = (data?.banners ?? []) as AdminBanner[]
-
-  function openAdd() {
-    setEditing(null)
-    setDialogOpen(true)
-  }
-
-  function openEdit(banner: AdminBanner) {
-    setEditing(banner)
-    setDialogOpen(true)
-  }
 
   async function toggleActive(banner: AdminBanner) {
     setError(null)
@@ -95,7 +82,10 @@ export default function AdminBannersPage() {
               <CardTitle>{t("admin.bannersTitle")}</CardTitle>
               <CardDescription>{t("admin.bannersDescription")}</CardDescription>
             </div>
-            <Button size="sm" onClick={openAdd}>
+            <Button
+              size="sm"
+              render={<Link href={`/${locale}/admin/banners/new`} />}
+            >
               <Plus data-icon="inline-start" />
               {t("admin.addBanner")}
             </Button>
@@ -184,7 +174,11 @@ export default function AdminBannersPage() {
                         variant="ghost"
                         size="icon-sm"
                         aria-label={t("admin.editBanner")}
-                        onClick={() => openEdit(banner)}
+                        render={
+                          <Link
+                            href={`/${locale}/admin/banners/${banner.id}/edit`}
+                          />
+                        }
                       >
                         <Pencil />
                       </Button>
@@ -215,15 +209,6 @@ export default function AdminBannersPage() {
           )}
         </CardContent>
       </Card>
-
-      {user && (
-        <BannerFormDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          banner={editing}
-          user={user}
-        />
-      )}
     </>
   )
 }

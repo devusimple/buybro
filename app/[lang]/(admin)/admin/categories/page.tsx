@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Pencil, Plus, Tags, Trash2 } from "lucide-react"
 
-import { CategoryFormDialog } from "@/components/admin/category-form"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -25,9 +25,7 @@ import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
 
 export default function AdminCategoriesPage() {
-  const { t } = useI18n()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<AdminCategory | null>(null)
+  const { t, locale } = useI18n()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,16 +38,6 @@ export default function AdminCategoriesPage() {
   })
 
   const categories = (data?.categories ?? []) as AdminCategory[]
-
-  function openAdd() {
-    setEditing(null)
-    setDialogOpen(true)
-  }
-
-  function openEdit(category: AdminCategory) {
-    setEditing(category)
-    setDialogOpen(true)
-  }
 
   async function handleDelete(category: AdminCategory) {
     const productCount = category.products?.length ?? 0
@@ -82,7 +70,10 @@ export default function AdminCategoriesPage() {
                 {t("admin.categoriesDescription")}
               </CardDescription>
             </div>
-            <Button size="sm" onClick={openAdd}>
+            <Button
+              size="sm"
+              render={<Link href={`/${locale}/admin/categories/new`} />}
+            >
               <Plus data-icon="inline-start" />
               {t("admin.addCategory")}
             </Button>
@@ -153,7 +144,11 @@ export default function AdminCategoriesPage() {
                             variant="ghost"
                             size="icon-sm"
                             aria-label={t("admin.editCategory")}
-                            onClick={() => openEdit(category)}
+                            render={
+                              <Link
+                                href={`/${locale}/admin/categories/${category.id}/edit`}
+                              />
+                            }
                           >
                             <Pencil />
                           </Button>
@@ -176,13 +171,6 @@ export default function AdminCategoriesPage() {
           )}
         </CardContent>
       </Card>
-
-      <CategoryFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        categories={categories}
-        category={editing}
-      />
     </>
   )
 }

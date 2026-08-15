@@ -2,9 +2,9 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Package, Pencil, Plus, Trash2 } from "lucide-react"
 
-import { ProductFormDialog } from "@/components/admin/product-form"
 import { AdminProductCsv } from "@/components/admin/product-csv"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,17 +23,14 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { AdminCategory, AdminCollection, AdminProduct } from "@/lib/admin"
+import type { AdminCategory, AdminProduct } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export default function AdminProductsPage() {
-  const { t } = useI18n()
-  const { user } = clientDb.useAuth()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<AdminProduct | null>(null)
+  const { t, locale } = useI18n()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,24 +45,10 @@ export default function AdminProductsPage() {
       faqs: {},
     },
     categories: {},
-    collections: {
-      $: { order: { sortOrder: "asc" } },
-    },
   })
 
   const products = (data?.products ?? []) as AdminProduct[]
   const categories = (data?.categories ?? []) as AdminCategory[]
-  const collections = (data?.collections ?? []) as AdminCollection[]
-
-  function openAdd() {
-    setEditing(null)
-    setDialogOpen(true)
-  }
-
-  function openEdit(product: AdminProduct) {
-    setEditing(product)
-    setDialogOpen(true)
-  }
 
   async function handleDelete(product: AdminProduct) {
     if (confirmDeleteId !== product.id) {
@@ -98,7 +81,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
               <AdminProductCsv products={products} categories={categories} />
-              <Button size="sm" onClick={openAdd}>
+              <Button size="sm" render={<Link href={`/${locale}/admin/products/new`} />}>
                 <Plus data-icon="inline-start" />
                 {t("admin.addProduct")}
               </Button>
@@ -233,7 +216,11 @@ export default function AdminProductsPage() {
                               variant="ghost"
                               size="icon-sm"
                               aria-label={t("admin.editProduct")}
-                              onClick={() => openEdit(product)}
+                              render={
+                                <Link
+                                  href={`/${locale}/admin/products/${product.id}/edit`}
+                                />
+                              }
                             >
                               <Pencil />
                             </Button>
@@ -257,18 +244,6 @@ export default function AdminProductsPage() {
           )}
         </CardContent>
       </Card>
-
-      {user && (
-        <ProductFormDialog
-          key={editing?.id ?? "new"}
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          categories={categories}
-          collections={collections}
-          product={editing}
-          user={user}
-        />
-      )}
     </>
   )
 }

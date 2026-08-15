@@ -36,6 +36,17 @@ export type AdminOrder = InstaQLEntity<
 >
 export type AdminBanner = InstaQLEntity<AppSchema, "banners", { image: {} }>
 export type AdminProfile = InstaQLEntity<AppSchema, "profiles">
+export type AdminFile = InstaQLEntity<
+  AppSchema,
+  "$files",
+  {
+    products: {}
+    productGallery: {}
+    banners: {}
+    reviewMedia: {}
+    profiles: {}
+  }
+>
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 
 export function useIsAdmin() {

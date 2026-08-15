@@ -23,6 +23,7 @@ const en = {
     item: "{count} item",
     items: "{count} items",
     addAddress: "Add address",
+    back: "Back",
   },
   footer: {
     tagline: "Gadgets for people who upgrade early",
@@ -565,6 +566,30 @@ const en = {
     noTopProducts: "No sales yet",
     noTopProductsHint:
       "Once orders come in, your best sellers will appear here.",
+    files: "Files",
+    filesTitle: "Files",
+    filesDescription:
+      "Every uploaded image and file, with where each one is used.",
+    noFiles: "No files yet",
+    noFilesHint:
+      "Images uploaded for products, banners and reviews will appear here.",
+    unused: "Unused",
+    usedAsThumbnail: "Product thumbnail",
+    usedInGallery: "Product gallery",
+    usedInBanner: "Banner image",
+    usedInReview: "Review media",
+    usedAsAvatar: "Profile avatar",
+    inUse: "In use",
+    noUsage: "No usage",
+    copyUrl: "Copy URL",
+    urlCopied: "URL copied",
+    deleteFile: "Delete file",
+    deleteFileHint:
+      "Files in use are linked to a product, banner, review or profile.",
+    confirmDeleteFile: "Delete this file?",
+    deleteUnusedOnly: "You can delete a file after removing every link.",
+    filePath: "Path",
+    fileKind: "Image",
   },
   policies: {
     supportTitle: "Need help?",

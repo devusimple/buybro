@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Pencil, Plus, TicketPercent, Trash2 } from "lucide-react"
 
-import { CouponFormDialog } from "@/components/admin/coupon-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -36,8 +36,6 @@ function formatDate(ms: number, locale: string) {
 
 export default function AdminCouponsPage() {
   const { t, locale } = useI18n()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<AdminCoupon | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [now] = useState(() => Date.now())
@@ -49,16 +47,6 @@ export default function AdminCouponsPage() {
   })
 
   const coupons = (data?.coupons ?? []) as AdminCoupon[]
-
-  function openAdd() {
-    setEditing(null)
-    setDialogOpen(true)
-  }
-
-  function openEdit(coupon: AdminCoupon) {
-    setEditing(coupon)
-    setDialogOpen(true)
-  }
 
   async function handleDelete(coupon: AdminCoupon) {
     if (confirmDeleteId !== coupon.id) {
@@ -90,7 +78,10 @@ export default function AdminCouponsPage() {
               <CardTitle>{t("admin.couponsTitle")}</CardTitle>
               <CardDescription>{t("admin.couponsDescription")}</CardDescription>
             </div>
-            <Button size="sm" onClick={openAdd}>
+            <Button
+              size="sm"
+              render={<Link href={`/${locale}/admin/coupons/new`} />}
+            >
               <Plus data-icon="inline-start" />
               {t("admin.addCoupon")}
             </Button>
@@ -172,7 +163,11 @@ export default function AdminCouponsPage() {
                             variant="ghost"
                             size="icon-sm"
                             aria-label={t("admin.editCoupon")}
-                            onClick={() => openEdit(coupon)}
+                            render={
+                              <Link
+                                href={`/${locale}/admin/coupons/${coupon.id}/edit`}
+                              />
+                            }
                           >
                             <Pencil />
                           </Button>
@@ -195,12 +190,6 @@ export default function AdminCouponsPage() {
           )}
         </CardContent>
       </Card>
-
-      <CouponFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        coupon={editing}
-      />
     </>
   )
 }

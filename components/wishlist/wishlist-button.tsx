@@ -53,7 +53,7 @@ export function WishlistButton({
       aria-label={active ? t("wishlist.remove") : t("wishlist.add")}
       onClick={handleClick}
       className={cn(
-        "rounded-full bg-background/80 text-muted-foreground shadow-sm backdrop-blur hover:bg-background hover:text-destructive",
+        "bg-background/80 text-muted-foreground shadow-sm backdrop-blur hover:bg-background hover:text-destructive",
         "data-[active]:bg-destructive/10 data-[active]:text-destructive",
         className
       )}

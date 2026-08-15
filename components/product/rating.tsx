@@ -21,7 +21,11 @@ export function RatingStars({
       {Array.from({ length: 5 }).map((_, index) => {
         const fill = Math.max(0, Math.min(1, value - index))
         return (
-          <span key={index} className={cn("relative shrink-0", className)}>
+          <span
+            key={index}
+            aria-hidden="true"
+            className={cn("relative shrink-0", className)}
+          >
             <Star
               className={cn(
                 "absolute inset-0",
@@ -51,8 +55,20 @@ export function RatingInput({
   onChange: (value: number) => void
   ariaLabel: (rating: number) => string
 }) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (
+      !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)
+    ) {
+      return
+    }
+    event.preventDefault()
+    const step = event.key === "ArrowLeft" || event.key === "ArrowDown" ? -1 : 1
+    const next = Math.min(5, Math.max(1, value + step))
+    onChange(next)
+  }
+
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" onKeyDown={handleKeyDown}>
       {Array.from({ length: 5 }).map((_, index) => {
         const rating = index + 1
         return (
@@ -60,8 +76,9 @@ export function RatingInput({
             key={rating}
             type="button"
             aria-label={ariaLabel(rating)}
+            aria-pressed={rating <= value}
             onClick={() => onChange(rating)}
-            className="rounded-md p-0.5 transition-transform hover:scale-110"
+            className="rounded-md p-0.5 transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Star
               className={cn(

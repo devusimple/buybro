@@ -1,19 +1,20 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 import { id } from "@instantdb/react"
 import { Dices } from "lucide-react"
 
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -58,16 +59,9 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
-export function CouponFormDialog({
-  open,
-  onOpenChange,
-  coupon,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  coupon?: AdminCoupon | null
-}) {
-  const { t } = useI18n()
+export function CouponForm({ coupon }: { coupon?: AdminCoupon | null }) {
+  const { t, locale } = useI18n()
+  const router = useRouter()
   const [code, setCode] = useState(coupon?.code ?? "")
   const [discountType, setDiscountType] = useState(coupon?.discountType ?? "")
   const [value, setValue] = useState(
@@ -114,7 +108,7 @@ export function CouponFormDialog({
           ? clientDb.tx.coupons[coupon.id].update(payload)
           : clientDb.tx.coupons[id()].create(payload)
       )
-      onOpenChange(false)
+      goBack()
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.saveError"))
     } finally {
@@ -122,17 +116,27 @@ export function CouponFormDialog({
     }
   }
 
+  function goBack() {
+    router.push(`/${locale}/admin/coupons`)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <CardTitle>
             {coupon ? t("admin.editCoupon") : t("admin.addCoupon")}
-          </DialogTitle>
-          <DialogDescription>{t("admin.couponFormHint")}</DialogDescription>
-        </DialogHeader>
+          </CardTitle>
+          <CardDescription>{t("admin.couponFormHint")}</CardDescription>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={goBack}>
+          <ArrowLeft data-icon="inline-start" />
+          {t("common.back")}
+        </Button>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-5">
+          <div className="flex max-w-lg flex-col gap-5">
             <Field label={t("admin.code")} htmlFor="admin-coupon-code">
               <div className="flex gap-2">
                 <Input
@@ -275,12 +279,12 @@ export function CouponFormDialog({
             </label>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter className="pt-2">
+            <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 disabled={saving}
-                onClick={() => onOpenChange(false)}
+                onClick={goBack}
               >
                 {t("common.cancel")}
               </Button>
@@ -291,10 +295,10 @@ export function CouponFormDialog({
                     ? t("common.saveChanges")
                     : t("admin.addCoupon")}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   )
 }

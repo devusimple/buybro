@@ -1,21 +1,21 @@
 "use client"
 
-import { useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import Image from "next/image"
-import { Plus, Trash2, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Plus, Trash2, X } from "lucide-react"
 import { id, type User } from "@instantdb/react"
 
 import { RichTextEditor } from "@/components/admin/rich-text-editor"
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -60,22 +60,19 @@ type GalleryUpload = {
   url: string
 }
 
-export function ProductFormDialog({
-  open,
-  onOpenChange,
+export function ProductForm({
   categories,
   collections,
   product,
   user,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   categories: AdminCategory[]
   collections: AdminCollection[]
   product?: AdminProduct | null
   user: User
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const router = useRouter()
   const [name, setName] = useState(product?.name ?? "")
   const [slug, setSlug] = useState(product?.slug ?? "")
   const [slugTouched, setSlugTouched] = useState(Boolean(product))
@@ -183,10 +180,11 @@ export function ProductFormDialog({
   }
 
   function handleGalleryFiles(selected: FileList | null) {
-    const uploads = Array.from(selected ?? []).map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }))
+    const uploads = Array.from(selected ?? []).map((file) => {
+      const url = URL.createObjectURL(file)
+      objectUrls.current.push(url)
+      return { file, url }
+    })
     if (uploads.length > 0) {
       setGalleryUploads((current) => [...current, ...uploads])
     }
@@ -205,24 +203,19 @@ export function ProductFormDialog({
     })
   }
 
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      setError(null)
-      if (thumbUrl) {
-        URL.revokeObjectURL(thumbUrl)
-        setThumbUrl(null)
-      }
-      setFile(null)
-      setGalleryUploads((current) => {
-        for (const upload of current) {
-          URL.revokeObjectURL(upload.url)
-        }
-        return []
-      })
-      setGalleryRemoved([])
-    }
-    onOpenChange(next)
+  function goBack() {
+    router.push(`/${locale}/admin/products`)
   }
+
+  const objectUrls = useRef<string[]>([])
+  useEffect(() => {
+    const urls = objectUrls.current
+    return () => {
+      for (const url of urls) {
+        URL.revokeObjectURL(url)
+      }
+    }
+  }, [])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -387,7 +380,7 @@ export function ProductFormDialog({
       }
 
       await clientDb.transact(txs as Parameters<typeof clientDb.transact>[0])
-      onOpenChange(false)
+      goBack()
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.saveError"))
     } finally {
@@ -396,16 +389,27 @@ export function ProductFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <CardTitle>
             {product ? t("admin.editProduct") : t("admin.addProduct")}
-          </DialogTitle>
-          <DialogDescription>{t("admin.productFormHint")}</DialogDescription>
-        </DialogHeader>
+          </CardTitle>
+          <CardDescription>{t("admin.productFormHint")}</CardDescription>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => goBack()}
+        >
+          <ArrowLeft data-icon="inline-start" />
+          {t("common.back")}
+        </Button>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={handleSubmit}>
-          <div className="flex max-h-[min(65vh,32rem)] flex-col gap-5 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-5">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t("admin.name")} htmlFor="admin-product-name">
                 <Input
@@ -629,7 +633,9 @@ export function ProductFormDialog({
                       if (thumbUrl) {
                         URL.revokeObjectURL(thumbUrl)
                       }
-                      setThumbUrl(URL.createObjectURL(selected))
+                      const url = URL.createObjectURL(selected)
+                      objectUrls.current.push(url)
+                      setThumbUrl(url)
                       setFile(selected)
                     }
                   }}
@@ -874,12 +880,12 @@ export function ProductFormDialog({
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <DialogFooter className="pt-2">
+            <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 disabled={saving}
-                onClick={() => onOpenChange(false)}
+                onClick={() => goBack()}
               >
                 {t("common.cancel")}
               </Button>
@@ -890,11 +896,11 @@ export function ProductFormDialog({
                     ? t("common.saveChanges")
                     : t("admin.addProduct")}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   )
 }
 

@@ -1,20 +1,20 @@
 "use client"
 
-import { useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import Image from "next/image"
-import { ArrowRight } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, ArrowRight } from "lucide-react"
 import { id, type User } from "@instantdb/react"
 
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import type { AdminBanner } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
@@ -26,18 +26,15 @@ function toNumber(value: string) {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined
 }
 
-export function BannerFormDialog({
-  open,
-  onOpenChange,
+export function BannerForm({
   banner,
   user,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   banner?: AdminBanner | null
   user: User
 }) {
   const { t, locale } = useI18n()
+  const router = useRouter()
   const [title, setTitle] = useState(banner?.title ?? "")
   const [subtitle, setSubtitle] = useState(banner?.subtitle ?? "")
   const [ctaLabel, setCtaLabel] = useState(banner?.ctaLabel ?? "")
@@ -51,6 +48,20 @@ export function BannerFormDialog({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const objectUrls = useRef<string[]>([])
+  useEffect(() => {
+    const urls = objectUrls.current
+    return () => {
+      for (const url of urls) {
+        URL.revokeObjectURL(url)
+      }
+    }
+  }, [])
+
+  function goBack() {
+    router.push(`/${locale}/admin/banners`)
+  }
 
   const previewUrl = file ? thumbUrl : (banner?.image?.url ?? null)
   const previewHref = ctaHref ? `/${locale}${ctaHref}` : `/${locale}`
@@ -106,7 +117,7 @@ export function BannerFormDialog({
       }
 
       await clientDb.transact(txs as Parameters<typeof clientDb.transact>[0])
-      onOpenChange(false)
+      goBack()
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.saveError"))
     } finally {
@@ -115,17 +126,23 @@ export function BannerFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <CardTitle>
             {banner ? t("admin.editBanner") : t("admin.addBanner")}
-          </DialogTitle>
-          <DialogDescription>{t("admin.bannerFormHint")}</DialogDescription>
-        </DialogHeader>
+          </CardTitle>
+          <CardDescription>{t("admin.bannerFormHint")}</CardDescription>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={goBack}>
+          <ArrowLeft data-icon="inline-start" />
+          {t("common.back")}
+        </Button>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-            <div className="flex max-h-[min(65vh,36rem)] flex-col gap-5 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-5">
               <Field
                 label={t("admin.bannerTitle")}
                 htmlFor="admin-banner-title"
@@ -216,7 +233,9 @@ export function BannerFormDialog({
                         if (thumbUrl) {
                           URL.revokeObjectURL(thumbUrl)
                         }
-                        setThumbUrl(URL.createObjectURL(selected))
+                        const url = URL.createObjectURL(selected)
+                        objectUrls.current.push(url)
+                        setThumbUrl(url)
                         setFile(selected)
                       }
                     }}
@@ -247,12 +266,12 @@ export function BannerFormDialog({
               </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <DialogFooter className="pt-2">
+              <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   disabled={saving}
-                  onClick={() => onOpenChange(false)}
+                  onClick={goBack}
                 >
                   {t("common.cancel")}
                 </Button>
@@ -263,7 +282,7 @@ export function BannerFormDialog({
                       ? t("common.saveChanges")
                       : t("admin.addBanner")}
                 </Button>
-              </DialogFooter>
+              </div>
             </div>
 
             <div className="flex flex-col gap-3 lg:sticky lg:top-0 lg:self-start">
@@ -305,7 +324,7 @@ export function BannerFormDialog({
             </div>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   )
 }

@@ -12,6 +12,8 @@ import { useCartStore } from "@/lib/cart-store"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
 import type { Product } from "@/lib/types"
+import { LucideShoppingBag } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 export function ProductCard({ product }: { product: Product }) {
   const { t, locale } = useI18n()
@@ -30,9 +32,7 @@ export function ProductCard({ product }: { product: Product }) {
   const reviewCount = product.reviewCount ?? 0
   const isOutOfStock = product.stock != null && product.stock <= 0
 
-  const handleAddToCart = (event: React.MouseEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
+  const handleAddToCart = () => {
     addItem({
       id: product.id,
       slug: product.slug,
@@ -50,11 +50,12 @@ export function ProductCard({ product }: { product: Product }) {
         productId={product.id}
         className="absolute top-2 right-2 z-10"
       />
-      <Link
-        href={`/${locale}/products/${product.slug}`}
-        className="group/card flex h-full flex-col"
-      >
-        <Card size="sm" className="h-full">
+      <Card size="sm" className="h-full">
+        <Link
+          href={`/${locale}/products/${product.slug}`}
+          aria-label={product.name}
+          className="group/card flex flex-1 flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
           <div className="relative aspect-square overflow-hidden bg-muted">
             {product.image?.url ? (
               <Image
@@ -62,7 +63,10 @@ export function ProductCard({ product }: { product: Product }) {
                 alt={product.name}
                 width={800}
                 height={800}
-                className="aspect-square h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                className={cn(
+                  "aspect-square h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105",
+                  isOutOfStock && "opacity-60"
+                )}
               />
             ) : (
               <div className="flex h-full items-center justify-center text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
@@ -72,25 +76,32 @@ export function ProductCard({ product }: { product: Product }) {
             {isOnSale && (
               <Badge
                 variant="destructive"
-                className="absolute top-0 left-0 bg-destructive px-2 py-1"
+                className="absolute top-0 left-0 bg-destructive px-2 py-1 tabular-nums"
               >
                 {t("product.offPercent", { percent: discountPercent })}
               </Badge>
             )}
+            {isOutOfStock && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                <span className="bg-background px-3 py-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase shadow-sm">
+                  {t("product.outOfStock")}
+                </span>
+              </div>
+            )}
           </div>
           <CardContent className="flex flex-1 flex-col gap-1">
-            <p className="text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
+            <p className="truncate text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
               {product.category?.name ?? t("common.accessories")}
             </p>
-            <h3 className="text-sm font-semibold tracking-wider uppercase">
+            <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold tracking-wider uppercase">
               {product.name}
             </h3>
             <p className="mt-1 flex items-baseline gap-2">
-              <span className="text-sm font-semibold">
+              <span className="text-sm font-semibold tabular-nums">
                 {formatPrice(product.priceCents)}
               </span>
               {isOnSale && (
-                <span className="text-xs text-muted-foreground line-through">
+                <span className="text-xs text-muted-foreground tabular-nums line-through">
                   {formatPrice(product.compareAtPriceCents!)}
                 </span>
               )}
@@ -98,23 +109,29 @@ export function ProductCard({ product }: { product: Product }) {
             {reviewCount > 0 && (
               <p className="flex items-center gap-1.5">
                 <RatingStars value={rating} size="sm" />
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs tabular-nums">
+                  {rating.toFixed(1)}
+                </span>
+                <span className="text-xs text-muted-foreground tabular-nums">
                   ({reviewCount})
                 </span>
               </p>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-auto w-full"
-              disabled={isOutOfStock}
-              onClick={handleAddToCart}
-            >
-              {t("product.addToCart")}
-            </Button>
           </CardContent>
-        </Card>
-      </Link>
+        </Link>
+        <CardContent>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full"
+            disabled={isOutOfStock}
+            onClick={handleAddToCart}
+          >
+            <LucideShoppingBag size={16} />
+            {isOutOfStock ? t("product.outOfStock") : t("product.addToCart")}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

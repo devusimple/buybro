@@ -1,18 +1,19 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 import { id } from "@instantdb/react"
 
 import { Field } from "@/components/profile/field"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -36,18 +37,15 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "")
 }
 
-export function CategoryFormDialog({
-  open,
-  onOpenChange,
+export function CategoryForm({
   categories,
   category,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   categories: AdminCategory[]
   category?: AdminCategory | null
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const router = useRouter()
   const [name, setName] = useState(category?.name ?? "")
   const [slug, setSlug] = useState(category?.slug ?? "")
   const [slugTouched, setSlugTouched] = useState(Boolean(category))
@@ -94,7 +92,7 @@ export function CategoryFormDialog({
         }
         await clientDb.transact(chunk)
       }
-      onOpenChange(false)
+      goBack()
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.saveError"))
     } finally {
@@ -102,17 +100,27 @@ export function CategoryFormDialog({
     }
   }
 
+  function goBack() {
+    router.push(`/${locale}/admin/categories`)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <CardTitle>
             {category ? t("admin.editCategory") : t("admin.addCategory")}
-          </DialogTitle>
-          <DialogDescription>{t("admin.categoryFormHint")}</DialogDescription>
-        </DialogHeader>
+          </CardTitle>
+          <CardDescription>{t("admin.categoryFormHint")}</CardDescription>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={goBack}>
+          <ArrowLeft data-icon="inline-start" />
+          {t("common.back")}
+        </Button>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-5">
+          <div className="flex max-w-lg flex-col gap-5">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t("admin.name")} htmlFor="admin-category-name">
                 <Input
@@ -182,12 +190,12 @@ export function CategoryFormDialog({
               </Select>
             </Field>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter className="pt-2">
+            <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
                 disabled={saving}
-                onClick={() => onOpenChange(false)}
+                onClick={goBack}
               >
                 {t("common.cancel")}
               </Button>
@@ -198,10 +206,10 @@ export function CategoryFormDialog({
                     ? t("common.saveChanges")
                     : t("admin.addCategory")}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   )
 }
