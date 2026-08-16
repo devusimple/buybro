@@ -89,7 +89,7 @@ export function ProductCard({ product }: { product: Product }) {
               </div>
             )}
           </div>
-          <CardContent className="flex flex-1 flex-col gap-1">
+          <CardContent className="flex flex-1 flex-col gap-1 px-1 py-2">
             <p className="truncate text-[0.625rem] font-semibold tracking-widest text-muted-foreground uppercase">
               {product.category?.name ?? t("common.accessories")}
             </p>
@@ -119,7 +119,7 @@ export function ProductCard({ product }: { product: Product }) {
             )}
           </CardContent>
         </Link>
-        <CardContent>
+        <CardContent className="p-0">
           <Button
             size="sm"
             variant="outline"

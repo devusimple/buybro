@@ -14,13 +14,15 @@ Fully functional storefront + admin, not a boilerplate. Storefront: home feed, s
 
 ## Commands & verification
 
+Use **bun** for everything — installs, scripts, `npx` — never `npm`/`yarn`. Do not run a full build for every change.
+
 - `bun run dev` — Next dev server (Turbopack)
-- `bun run build` / `bun run start` — production build / serve
+- `bun run build` / `bun run start` — production build / serve (only for large, multi-file, or architecture-level changes)
 - `bun run lint` — ESLint (flat config, `eslint.config.mjs`)
 - `bun run typecheck` — `tsc --noEmit`
 - `bun run format` — Prettier on `**/*.{ts,tsx}`
 - `bun run seed` — `bun scripts/seed.ts` (admin SDK; seeds categories, collections, banners, coupons, products with variants/FAQs, uploads demo images to Instant Storage)
-- There is **no test framework**. Verify with `lint` → `typecheck` → `build`.
+- There is **no test framework**. For small edits, verify with `bun run format` → `bun run lint` → `bun run typecheck`. Run `bun run build` only when the change is large or touches many files.
 
 ## Environment
 
