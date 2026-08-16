@@ -2,10 +2,13 @@
 
 import * as React from "react"
 
+import { AdminBestSellers } from "@/components/admin/admin-best-sellers"
 import { AdminCategoryRevenue } from "@/components/admin/admin-category-revenue"
 import { AdminCouponPerformance } from "@/components/admin/admin-coupon-performance"
 import { AdminLowStock } from "@/components/admin/admin-low-stock"
+import { AdminOrderHealth } from "@/components/admin/admin-order-health"
 import { AdminOrderStatus } from "@/components/admin/admin-order-status"
+import { AdminPaymentSplit } from "@/components/admin/admin-payment-split"
 import { AdminRecentOrders } from "@/components/admin/admin-recent-orders"
 import { AdminRevenueChart } from "@/components/admin/admin-revenue-chart"
 import { AdminStatCards } from "@/components/admin/admin-stat-cards"
@@ -107,6 +110,11 @@ export default function AdminDashboardPage() {
           couponUsages={couponUsages}
           orders={orders}
         />
+      </div>
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
+        <AdminBestSellers orders={orders} />
+        <AdminPaymentSplit orders={orders} />
+        <AdminOrderHealth orders={orders} />
       </div>
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <AdminTopProducts orders={orders} />
