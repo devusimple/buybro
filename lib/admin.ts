@@ -32,7 +32,7 @@ export type AdminCoupon = InstaQLEntity<AppSchema, "coupons">
 export type AdminOrder = InstaQLEntity<
   AppSchema,
   "orders",
-  { items: { product: {} } }
+  { items: { product: { variants: {} } } }
 >
 export type AdminBanner = InstaQLEntity<AppSchema, "banners", { image: {} }>
 export type AdminProfile = InstaQLEntity<AppSchema, "profiles">

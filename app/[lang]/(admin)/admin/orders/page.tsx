@@ -76,6 +76,7 @@ export default function AdminOrdersPage() {
   const { t, locale } = useI18n()
   const { user } = clientDb.useAuth()
   const [filter, setFilter] = useState<string>("all")
+  const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<AdminOrder | null>(null)
@@ -83,7 +84,7 @@ export default function AdminOrdersPage() {
   const { data, isLoading } = clientDb.useQuery({
     orders: {
       $: { order: { createdAt: "desc" } },
-      items: { product: {} },
+      items: { product: { variants: {} } },
     },
     profiles: {},
   })
@@ -94,9 +95,13 @@ export default function AdminOrdersPage() {
     profiles.map((profile) => [profile.ownerId, profile])
   )
 
+  const PAGE_SIZE = 20
   const filtered = orders.filter((order) =>
     filter === "all" ? true : order.status === filter
   )
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount)
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   function customerName(order: AdminOrder) {
     const profile = profileByOwner.get(order.ownerId)
@@ -150,7 +155,10 @@ export default function AdminOrdersPage() {
                 variant="outline"
                 size="sm"
                 value={[filter]}
-                onValueChange={(value) => setFilter(value[0] ?? "all")}
+                onValueChange={(value) => {
+                  setFilter(value[0] ?? "all")
+                  setPage(1)
+                }}
                 className="flex-wrap"
               >
                 <ToggleGroupItem value="all">
@@ -188,167 +196,222 @@ export default function AdminOrdersPage() {
               {t("admin.noFilteredOrders")}
             </p>
           ) : (
-            <ul className="flex flex-col">
-              {filtered.map((order) => {
-                const items = order.items ?? []
-                const itemCount = items.reduce(
-                  (sum, item) => sum + (item.quantity ?? 0),
-                  0
-                )
-                return (
-                  <li key={order.id}>
-                    <div className="flex flex-col gap-4 py-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex flex-col gap-1">
-                          <p className="text-xs font-semibold tracking-widest uppercase">
-                            {t("orders.orderPrefix")}
-                            {order.id.slice(0, 8).toUpperCase()}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {customerName(order)} ·{" "}
-                            {new Date(order.createdAt).toLocaleDateString(
-                              locale === "bn" ? "bn-BD" : "en-BD",
-                              {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              }
-                            )}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Badge
-                            variant={STATUS_VARIANTS[order.status] ?? "outline"}
-                          >
-                            {statusLabel(t, order.status)}
-                          </Badge>
-                          <Badge variant="secondary">
-                            {paymentLabel(t, order.paymentMethod)}
-                          </Badge>
-                          <span className="text-base font-semibold">
-                            {formatPrice(order.totalCents)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-2">
-                        {items.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center justify-between gap-4 text-sm"
-                          >
-                            <span className="min-w-0 truncate text-muted-foreground">
-                              <span className="font-medium text-foreground">
-                                {item.quantity}×
-                              </span>{" "}
-                              {item.product?.name ?? t("orders.product")}
-                            </span>
-                            <span className="shrink-0">
-                              {formatPrice(
-                                (item.priceCents ?? 0) * (item.quantity ?? 1)
+            <>
+              <ul className="flex flex-col">
+                {paged.map((order) => {
+                  const items = order.items ?? []
+                  const itemCount = items.reduce(
+                    (sum, item) => sum + (item.quantity ?? 0),
+                    0
+                  )
+                  return (
+                    <li key={order.id}>
+                      <div className="flex flex-col gap-4 py-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex flex-col gap-1">
+                            <p className="text-xs font-semibold tracking-widest uppercase">
+                              {t("orders.orderPrefix")}
+                              {order.id.slice(0, 8).toUpperCase()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {customerName(order)} ·{" "}
+                              {new Date(order.createdAt).toLocaleDateString(
+                                locale === "bn" ? "bn-BD" : "en-BD",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                }
                               )}
-                            </span>
+                            </p>
                           </div>
-                        ))}
-                      </div>
-
-                      {(order.shippingFullName ||
-                        order.shippingArea ||
-                        order.ownerEmail) && (
-                        <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-semibold tracking-widest uppercase">
-                              {t("admin.contact")}
-                            </span>
-                            {order.shippingFullName && (
-                              <span>
-                                {order.shippingFullName}
-                                {order.shippingPhone
-                                  ? ` · ${order.shippingPhone}`
-                                  : ""}
-                              </span>
-                            )}
-                            {order.ownerEmail && (
-                              <span>{order.ownerEmail}</span>
-                            )}
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-semibold tracking-widest uppercase">
-                              {t("admin.shipTo")}
-                            </span>
-                            {order.shippingHouseNo && (
-                              <span>
-                                {[
-                                  order.shippingHouseNo,
-                                  order.shippingRoad,
-                                  order.shippingArea,
-                                ]
-                                  .filter(Boolean)
-                                  .join(", ")}
-                                {order.shippingDistrict
-                                  ? `, ${order.shippingDistrict}`
-                                  : ""}
-                                {order.shippingPostalCode
-                                  ? ` ${order.shippingPostalCode}`
-                                  : ""}
-                                {order.shippingDivision
-                                  ? `, ${order.shippingDivision}`
-                                  : ""}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
-                        <span className="text-xs text-muted-foreground">
-                          {itemCount === 1
-                            ? t("common.item", { count: itemCount })
-                            : t("common.items", { count: itemCount })}
-                        </span>
-                        <label className="flex items-center gap-2 text-xs">
-                          <span className="font-semibold tracking-widest text-muted-foreground uppercase">
-                            {t("admin.updateStatus")}
-                          </span>
-                          <Select
-                            value={order.status}
-                            disabled={busyId === order.id}
-                            onValueChange={(value) => {
-                              if (value !== null && isOrderStatus(value)) {
-                                handleStatusChange(order, value)
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant={
+                                STATUS_VARIANTS[order.status] ?? "outline"
                               }
-                            }}
-                          >
-                            <SelectTrigger
-                              size="sm"
-                              aria-label={t("admin.updateStatus")}
-                              className={cn(
-                                "flex w-36 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate",
-                                order.status === "cancelled"
-                                  ? "text-destructive"
-                                  : "text-foreground"
-                              )}
                             >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {ORDER_STATUSES.map((status) => (
-                                  <SelectItem key={status} value={status}>
-                                    {statusLabel(t, status)}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </label>
+                              {statusLabel(t, order.status)}
+                            </Badge>
+                            <Badge variant="secondary">
+                              {paymentLabel(t, order.paymentMethod)}
+                            </Badge>
+                            <span className="text-base font-semibold">
+                              {formatPrice(order.totalCents)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          {items.map((item) => {
+                            const product = item.product
+                            const variant = product?.variants?.find(
+                              (candidate) => candidate.value === item.variant
+                            )
+                            const sku = variant?.sku ?? product?.sku
+                            return (
+                              <div
+                                key={item.id}
+                                className="flex items-start justify-between gap-4 text-sm"
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate text-muted-foreground">
+                                    <span className="font-medium text-foreground">
+                                      {item.quantity}×
+                                    </span>{" "}
+                                    {product?.name ?? t("orders.product")}
+                                    {item.variant && (
+                                      <span className="font-medium">
+                                        {" "}
+                                        — {item.variant}
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="mt-0.5 truncate text-xs text-muted-foreground tabular-nums">
+                                    {sku ? `${t("admin.sku")}: ${sku} · ` : ""}
+                                    {t("admin.id")}: {product?.id ?? "—"}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 font-medium tabular-nums">
+                                  {formatPrice(
+                                    (item.priceCents ?? 0) *
+                                      (item.quantity ?? 1)
+                                  )}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {(order.shippingFullName ||
+                          order.shippingArea ||
+                          order.ownerEmail) && (
+                          <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold tracking-widest uppercase">
+                                {t("admin.contact")}
+                              </span>
+                              {order.shippingFullName && (
+                                <span>
+                                  {order.shippingFullName}
+                                  {order.shippingPhone
+                                    ? ` · ${order.shippingPhone}`
+                                    : ""}
+                                </span>
+                              )}
+                              {order.ownerEmail && (
+                                <span>{order.ownerEmail}</span>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold tracking-widest uppercase">
+                                {t("admin.shipTo")}
+                              </span>
+                              {order.shippingHouseNo && (
+                                <span>
+                                  {[
+                                    order.shippingHouseNo,
+                                    order.shippingRoad,
+                                    order.shippingArea,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                  {order.shippingDistrict
+                                    ? `, ${order.shippingDistrict}`
+                                    : ""}
+                                  {order.shippingPostalCode
+                                    ? ` ${order.shippingPostalCode}`
+                                    : ""}
+                                  {order.shippingDivision
+                                    ? `, ${order.shippingDivision}`
+                                    : ""}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+                          <span className="text-xs text-muted-foreground">
+                            {itemCount === 1
+                              ? t("common.item", { count: itemCount })
+                              : t("common.items", { count: itemCount })}
+                          </span>
+                          <label className="flex items-center gap-2 text-xs">
+                            <span className="font-semibold tracking-widest text-muted-foreground uppercase">
+                              {t("admin.updateStatus")}
+                            </span>
+                            <Select
+                              value={order.status}
+                              disabled={busyId === order.id}
+                              onValueChange={(value) => {
+                                if (value !== null && isOrderStatus(value)) {
+                                  handleStatusChange(order, value)
+                                }
+                              }}
+                            >
+                              <SelectTrigger
+                                size="sm"
+                                aria-label={t("admin.updateStatus")}
+                                className={cn(
+                                  "flex w-36 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate",
+                                  order.status === "cancelled"
+                                    ? "text-destructive"
+                                    : "text-foreground"
+                                )}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {ORDER_STATUSES.map((status) => (
+                                    <SelectItem key={status} value={status}>
+                                      {statusLabel(t, status)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </label>
+                        </div>
                       </div>
-                    </div>
-                    <Separator />
-                  </li>
-                )
-              })}
-            </ul>
+                      <Separator />
+                    </li>
+                  )
+                })}
+              </ul>
+              {pageCount > 1 && (
+                <div className="mt-6 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
+                  <span className="text-xs text-muted-foreground">
+                    {t("admin.ordersCount", { count: filtered.length })}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage === 1}
+                      onClick={() => setPage(Math.max(1, safePage - 1))}
+                    >
+                      {t("admin.previous")}
+                    </Button>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {t("admin.pageNumber", {
+                        current: safePage,
+                        total: pageCount,
+                      })}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safePage === pageCount}
+                      onClick={() => setPage(Math.min(pageCount, safePage + 1))}
+                    >
+                      {t("admin.next")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
