@@ -78,17 +78,17 @@ export function CategoryForm({
         (option) => option.id === parentId
       )
       if (category) {
-        const chunk = clientDb.tx.categories[category.id].update(payload)
+        let chunk = clientDb.tx.categories[category.id].update(payload)
         if (parentOption) {
-          chunk.link({ parent: parentOption.id })
+          chunk = chunk.link({ parent: parentOption.id })
         } else if (category.parent) {
-          chunk.unlink({ parent: category.parent.id })
+          chunk = chunk.unlink({ parent: category.parent.id })
         }
         await clientDb.transact(chunk)
       } else {
-        const chunk = clientDb.tx.categories[id()].create(payload)
+        let chunk = clientDb.tx.categories[id()].create(payload)
         if (parentOption) {
-          chunk.link({ parent: parentOption.id })
+          chunk = chunk.link({ parent: parentOption.id })
         }
         await clientDb.transact(chunk)
       }

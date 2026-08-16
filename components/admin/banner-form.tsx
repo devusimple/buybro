@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import type { AdminBanner } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { useI18n } from "@/lib/i18n"
-import { isSvgFile } from "@/lib/utils"
+import { isSvgFile, normalizeCtaHref, resolveBannerHref } from "@/lib/utils"
 
 function toNumber(value: string) {
   const parsed = Number(value)
@@ -45,6 +45,7 @@ export function BannerForm({
   const [active, setActive] = useState(banner?.active !== false)
   const [file, setFile] = useState<File | null>(null)
   const [thumbUrl, setThumbUrl] = useState<string | null>(null)
+  const [removeImage, setRemoveImage] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -63,8 +64,12 @@ export function BannerForm({
     router.push(`/${locale}/admin/banners`)
   }
 
-  const previewUrl = file ? thumbUrl : (banner?.image?.url ?? null)
-  const previewHref = ctaHref ? `/${locale}${ctaHref}` : `/${locale}`
+  const previewUrl = file
+    ? thumbUrl
+    : removeImage
+      ? null
+      : (banner?.image?.url ?? null)
+  const previewHref = resolveBannerHref(ctaHref, locale)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -79,7 +84,7 @@ export function BannerForm({
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
         ctaLabel: ctaLabel.trim() || undefined,
-        ctaHref: ctaHref.trim() || undefined,
+        ctaHref: normalizeCtaHref(ctaHref) || undefined,
         sortOrder: toNumber(sortOrder),
         active,
       }
@@ -99,19 +104,21 @@ export function BannerForm({
 
       const txs: unknown[] = []
       if (banner) {
-        const chunk = clientDb.tx.banners[banner.id].update(payload)
+        let chunk = clientDb.tx.banners[banner.id].update(payload)
         if (thumbnailId) {
-          chunk.link({ image: thumbnailId })
+          chunk = chunk.link({ image: thumbnailId })
+        } else if (removeImage && banner.image) {
+          chunk = chunk.unlink({ image: banner.image.id })
         }
         txs.push(chunk)
-        if (thumbnailId && banner.image) {
+        if (banner.image && (thumbnailId || removeImage)) {
           txs.push(clientDb.tx.$files[banner.image.id].delete())
         }
       } else {
         const bannerId = id()
-        const chunk = clientDb.tx.banners[bannerId].create(payload)
+        let chunk = clientDb.tx.banners[bannerId].create(payload)
         if (thumbnailId) {
-          chunk.link({ image: thumbnailId })
+          chunk = chunk.link({ image: thumbnailId })
         }
         txs.push(chunk)
       }
@@ -237,10 +244,11 @@ export function BannerForm({
                         objectUrls.current.push(url)
                         setThumbUrl(url)
                         setFile(selected)
+                        setRemoveImage(false)
                       }
                     }}
                   />
-                  {file && (
+                  {file ? (
                     <Button
                       type="button"
                       variant="ghost"
@@ -251,6 +259,7 @@ export function BannerForm({
                         }
                         setThumbUrl(null)
                         setFile(null)
+                        setRemoveImage(false)
                         if (fileRef.current) {
                           fileRef.current.value = ""
                         }
@@ -258,8 +267,31 @@ export function BannerForm({
                     >
                       {t("common.cancel")}
                     </Button>
-                  )}
+                  ) : banner?.image && !removeImage ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRemoveImage(true)}
+                    >
+                      {t("admin.removeImage")}
+                    </Button>
+                  ) : removeImage ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRemoveImage(false)}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                  ) : null}
                 </div>
+                {removeImage && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("admin.imageWillBeRemoved")}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {t("admin.bannerImageHint")}
                 </p>

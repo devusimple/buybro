@@ -7,11 +7,11 @@ import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/lib/i18n"
 import type { Banner } from "@/lib/types"
-import { cn, isSvgFile } from "@/lib/utils"
+import { cn, isSvgFile, resolveBannerHref } from "@/lib/utils"
 
 export function BannerCard({ banner }: { banner: Banner }) {
   const { locale } = useI18n()
-  const href = banner.ctaHref ? `/${locale}${banner.ctaHref}` : `/${locale}`
+  const href = resolveBannerHref(banner.ctaHref, locale)
   const hasImage = Boolean(banner.image?.url)
   const hasText = Boolean(banner.title || banner.subtitle)
 
