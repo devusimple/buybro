@@ -286,9 +286,9 @@ function ProductView({ slug }: { slug: string }) {
         {t("product.backToShop")}
       </Button>
 
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
-        <div className="flex flex-col gap-3">
-          <div className="relative aspect-square overflow-hidden bg-muted">
+      <div className="grid min-w-0 gap-10 lg:grid-cols-2 lg:gap-14">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="relative aspect-square w-full overflow-hidden bg-muted">
             {activeGalleryImage?.url ? (
               <Image
                 src={activeGalleryImage.url}
@@ -320,7 +320,7 @@ function ProductView({ slug }: { slug: string }) {
                   type="button"
                   onClick={() => setActiveImage(index)}
                   className={cn(
-                    "relative size-20 shrink-0 overflow-hidden bg-muted transition-opacity",
+                    "relative size-16 shrink-0 overflow-hidden bg-muted transition-opacity sm:size-20",
                     index === activeImage
                       ? "ring-2 ring-primary"
                       : "opacity-60 hover:opacity-100"
@@ -330,7 +330,7 @@ function ProductView({ slug }: { slug: string }) {
                     src={image.url}
                     alt=""
                     fill
-                    sizes="80px"
+                    sizes="(max-width: 640px) 64px, 80px"
                     className="object-cover"
                   />
                 </button>
@@ -339,7 +339,7 @@ function ProductView({ slug }: { slug: string }) {
           )}
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-6">
           <div className="flex flex-col gap-3">
             <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
               {product.category?.name ?? t("common.accessories")}
@@ -462,7 +462,7 @@ function ProductView({ slug }: { slug: string }) {
       <Separator className="my-12" />
 
       <section className="grid gap-10 lg:grid-cols-2 lg:gap-14">
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <h2 className="text-lg font-semibold tracking-tight uppercase">
             {t("product.description")}
           </h2>
@@ -480,7 +480,7 @@ function ProductView({ slug }: { slug: string }) {
 
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <div className="flex items-end justify-between gap-4">
+            <div className="flex flex-wrap items-end justify-between gap-4">
               <h2 className="text-lg font-semibold tracking-tight uppercase">
                 {t("product.reviews")}
               </h2>
