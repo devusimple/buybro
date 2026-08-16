@@ -36,6 +36,7 @@ function CollectionPage() {
     collections: {
       $: { where: { slug } },
       products: {
+        $: { where: { status: { $ne: "draft" } } },
         image: {},
         gallery: {},
         variants: {},

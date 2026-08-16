@@ -59,6 +59,7 @@ function CategoryPage() {
       children: {},
     },
     products: {
+      $: { where: { status: { $ne: "draft" } } },
       image: {},
       gallery: {},
       variants: {},

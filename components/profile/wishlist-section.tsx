@@ -29,6 +29,7 @@ export function WishlistSection({ userId }: { userId: string }) {
     wishlists: {
       $: { where: { ownerId: userId }, limit: 1 },
       products: {
+        $: { where: { status: { $ne: "draft" } } },
         image: {},
         gallery: {},
         variants: {},

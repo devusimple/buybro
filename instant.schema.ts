@@ -33,6 +33,7 @@ const _schema = i.schema({
       compareAtPriceCents: i.number().indexed().optional(),
       featured: i.boolean().indexed().optional(),
       inStock: i.boolean().indexed().optional(),
+      status: i.string().indexed().optional(),
       stock: i.number().optional(),
       rating: i.number().indexed().optional(),
       reviewCount: i.number().indexed().optional(),

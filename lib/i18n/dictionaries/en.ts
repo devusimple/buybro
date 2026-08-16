@@ -432,6 +432,12 @@ const en = {
     none: "None",
     inStock: "In stock",
     featured: "Featured",
+    draft: "Draft",
+    published: "Published",
+    publish: "Publish",
+    unpublish: "Unpublish",
+    saveDraft: "Save draft",
+    saveAndPublish: "Save & publish",
     image: "Image",
     imageHint: "JPG or PNG. Square crops look best.",
     gallery: "Image gallery",
@@ -447,6 +453,7 @@ const en = {
     variantValue: "Value (e.g. Midnight)",
     variantPrice: "Price (USD, optional)",
     variantStock: "Stock (optional)",
+    variantSku: "SKU (optional)",
     ordersTitle: "Orders",
     ordersDescription: "View every order and update its status.",
     noOrdersHint: "Orders placed in the store will appear here.",
@@ -501,6 +508,7 @@ const en = {
     bannerSortOrder: "Sort order",
     bannerImageHint:
       "Wide crops work best. The top of the banner is left uncovered.",
+    imageWillBeRemoved: "The current image will be removed from this banner.",
     bannerLivePreview: "Live preview",
     noBanners: "No banners yet",
     noBannersHint:

@@ -20,6 +20,7 @@ const HEADERS = [
   "stock",
   "inStock",
   "featured",
+  "status",
   "category",
 ]
 
@@ -59,6 +60,7 @@ export function AdminProductCsv({
         product.stock != null ? String(product.stock) : "",
         product.inStock ? "true" : "false",
         product.featured ? "true" : "false",
+        product.status === "draft" ? "draft" : "active",
         product.category?.name ?? "",
       ]),
     ]
@@ -131,24 +133,25 @@ export function AdminProductCsv({
               : undefined,
           inStock: get("inStock") === "false" ? false : true,
           featured: get("featured") === "true",
+          status: get("status") === "draft" ? "draft" : "active",
         }
 
         const existing = productBySlug.get(slug)
         if (existing) {
-          const chunk = clientDb.tx.products[existing.id].update(payload)
+          let chunk = clientDb.tx.products[existing.id].update(payload)
           if (category) {
-            chunk.link({ category: category.id })
+            chunk = chunk.link({ category: category.id })
           }
           txs.push(chunk)
           updatedCount += 1
         } else {
           const productId = id()
-          const chunk = clientDb.tx.products[productId].create({
+          let chunk = clientDb.tx.products[productId].create({
             ...payload,
             createdAt: Date.now(),
           })
           if (category) {
-            chunk.link({ category: category.id })
+            chunk = chunk.link({ category: category.id })
           }
           txs.push(chunk)
           createdCount += 1

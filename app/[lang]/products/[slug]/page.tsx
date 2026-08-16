@@ -44,7 +44,7 @@ function ProductView({ slug }: { slug: string }) {
 
   const { data, isLoading, error } = clientDb.useQuery({
     products: {
-      $: { where: { slug } },
+      $: { where: { slug, status: { $ne: "draft" } } },
       image: {},
       gallery: {},
       variants: {},
@@ -58,6 +58,7 @@ function ProductView({ slug }: { slug: string }) {
 
   const { data: catalogData } = clientDb.useQuery({
     products: {
+      $: { where: { status: { $ne: "draft" } } },
       image: {},
       gallery: {},
       variants: {},

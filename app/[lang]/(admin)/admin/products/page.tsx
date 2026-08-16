@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Package, Pencil, Plus, Trash2 } from "lucide-react"
+import { Eye, EyeOff, Package, Pencil, Plus, Trash2 } from "lucide-react"
 
 import { AdminProductCsv } from "@/components/admin/product-csv"
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils"
 export default function AdminProductsPage() {
   const { t, locale } = useI18n()
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [togglingStatusId, setTogglingStatusId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const { data, isLoading } = clientDb.useQuery({
@@ -68,6 +69,21 @@ export default function AdminProductsPage() {
     }
   }
 
+  async function handleToggleStatus(product: AdminProduct) {
+    const nextStatus = product.status === "draft" ? "active" : "draft"
+    setTogglingStatusId(product.id)
+    setError(null)
+    try {
+      await clientDb.transact(
+        clientDb.tx.products[product.id].update({ status: nextStatus })
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.updateError"))
+    } finally {
+      setTogglingStatusId(null)
+    }
+  }
+
   return (
     <>
       <Card>
@@ -81,7 +97,10 @@ export default function AdminProductsPage() {
             </div>
             <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center">
               <AdminProductCsv products={products} categories={categories} />
-              <Button size="sm" render={<Link href={`/${locale}/admin/products/new`} />}>
+              <Button
+                size="sm"
+                render={<Link href={`/${locale}/admin/products/new`} />}
+              >
                 <Plus data-icon="inline-start" />
                 {t("admin.addProduct")}
               </Button>
@@ -152,6 +171,11 @@ export default function AdminProductsPage() {
                             {t("admin.featured")}
                           </Badge>
                         )}
+                        {product.status === "draft" && (
+                          <Badge variant="secondary" className="shrink-0">
+                            {t("admin.draft")}
+                          </Badge>
+                        )}
                       </div>
                       <p className="truncate text-xs text-muted-foreground">
                         /{product.slug}
@@ -212,6 +236,23 @@ export default function AdminProductsPage() {
                           </>
                         ) : (
                           <>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={togglingStatusId === product.id}
+                              aria-label={
+                                product.status === "draft"
+                                  ? t("admin.publish")
+                                  : t("admin.unpublish")
+                              }
+                              onClick={() => handleToggleStatus(product)}
+                            >
+                              {product.status === "draft" ? (
+                                <Eye />
+                              ) : (
+                                <EyeOff />
+                              )}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon-sm"

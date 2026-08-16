@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Plus, Trash2, X } from "lucide-react"
@@ -8,6 +8,7 @@ import { id, type User } from "@instantdb/react"
 
 import { RichTextEditor } from "@/components/admin/rich-text-editor"
 import { Field } from "@/components/profile/field"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -45,6 +46,7 @@ type VariantRow = {
   id?: string
   title: string
   value: string
+  sku: string
   priceCents: string
   stock: string
 }
@@ -108,6 +110,7 @@ export function ProductForm({
       id: variant.id,
       title: variant.title,
       value: variant.value,
+      sku: variant.sku ?? "",
       priceCents:
         variant.priceCents != null ? String(variant.priceCents / 100) : "",
       stock: variant.stock != null ? String(variant.stock) : "",
@@ -152,6 +155,7 @@ export function ProductForm({
         key: `new-${nextVariantKey.current++}`,
         title: "",
         value: "",
+        sku: "",
         priceCents: "",
         stock: "",
       },
@@ -217,8 +221,7 @@ export function ProductForm({
     }
   }, [])
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  async function handleSubmit(nextStatus: "draft" | "active") {
     setSaving(true)
     setError(null)
     try {
@@ -231,6 +234,7 @@ export function ProductForm({
         description: description.trim(),
         richDescription: sanitizeHtml(richDescription),
         sku: sku.trim() || undefined,
+        status: nextStatus,
         priceCents,
         compareAtPriceCents:
           Number.isFinite(compareAt) && compareAt > 0
@@ -269,20 +273,20 @@ export function ProductForm({
       const txs: unknown[] = []
 
       if (product) {
-        const chunk = clientDb.tx.products[product.id].update(payload)
+        let chunk = clientDb.tx.products[product.id].update(payload)
         if (categoryId) {
-          chunk.link({ category: categoryId })
+          chunk = chunk.link({ category: categoryId })
         } else if (product.category) {
-          chunk.unlink({ category: product.category.id })
+          chunk = chunk.unlink({ category: product.category.id })
         }
         if (thumbnailId) {
-          chunk.link({ image: thumbnailId })
+          chunk = chunk.link({ image: thumbnailId })
         }
         if (galleryIds.length > 0) {
-          chunk.link({ gallery: galleryIds })
+          chunk = chunk.link({ gallery: galleryIds })
         }
         if (galleryRemoved.length > 0) {
-          chunk.unlink({ gallery: galleryRemoved })
+          chunk = chunk.unlink({ gallery: galleryRemoved })
         }
         const currentCollectionIds = (product.collections ?? []).map(
           (collection) => collection.id
@@ -294,10 +298,10 @@ export function ProductForm({
           (collectionId) => !selectedCollections.includes(collectionId)
         )
         if (collectionsToAdd.length > 0) {
-          chunk.link({ collections: collectionsToAdd })
+          chunk = chunk.link({ collections: collectionsToAdd })
         }
         if (collectionsToRemove.length > 0) {
-          chunk.unlink({ collections: collectionsToRemove })
+          chunk = chunk.unlink({ collections: collectionsToRemove })
         }
         txs.push(chunk)
         if (thumbnailId && product.image) {
@@ -337,21 +341,21 @@ export function ProductForm({
         }
       } else {
         const productId = id()
-        const chunk = clientDb.tx.products[productId].create({
+        let chunk = clientDb.tx.products[productId].create({
           ...payload,
           createdAt: Date.now(),
         })
         if (categoryId) {
-          chunk.link({ category: categoryId })
+          chunk = chunk.link({ category: categoryId })
         }
         if (thumbnailId) {
-          chunk.link({ image: thumbnailId })
+          chunk = chunk.link({ image: thumbnailId })
         }
         if (galleryIds.length > 0) {
-          chunk.link({ gallery: galleryIds })
+          chunk = chunk.link({ gallery: galleryIds })
         }
         if (selectedCollections.length > 0) {
-          chunk.link({ collections: selectedCollections })
+          chunk = chunk.link({ collections: selectedCollections })
         }
         txs.push(chunk)
         for (const row of variants) {
@@ -392,8 +396,17 @@ export function ProductForm({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
-          <CardTitle>
+          <CardTitle className="flex items-center gap-2">
             {product ? t("admin.editProduct") : t("admin.addProduct")}
+            {product && (
+              <Badge
+                variant={product.status === "draft" ? "secondary" : "default"}
+              >
+                {product.status === "draft"
+                  ? t("admin.draft")
+                  : t("admin.published")}
+              </Badge>
+            )}
           </CardTitle>
           <CardDescription>{t("admin.productFormHint")}</CardDescription>
         </div>
@@ -408,7 +421,12 @@ export function ProductForm({
         </Button>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            handleSubmit("active")
+          }}
+        >
           <div className="flex flex-col gap-5">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label={t("admin.name")} htmlFor="admin-product-name">
@@ -759,7 +777,7 @@ export function ProductForm({
                   {variants.map((row) => (
                     <div
                       key={row.key}
-                      className="grid gap-2 rounded-md border border-border p-2 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]"
+                      className="grid gap-2 rounded-md border border-border p-2 sm:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]"
                     >
                       <Input
                         value={row.title}
@@ -775,6 +793,13 @@ export function ProductForm({
                         placeholder={t("admin.variantValue")}
                         onChange={(event) =>
                           updateVariant(row.key, { value: event.target.value })
+                        }
+                      />
+                      <Input
+                        value={row.sku}
+                        placeholder={t("admin.variantSku")}
+                        onChange={(event) =>
+                          updateVariant(row.key, { sku: event.target.value })
                         }
                       />
                       <Input
@@ -889,11 +914,19 @@ export function ProductForm({
               >
                 {t("common.cancel")}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving}
+                onClick={() => handleSubmit("draft")}
+              >
+                {saving ? t("common.saving") : t("admin.saveDraft")}
+              </Button>
               <Button type="submit" disabled={saving}>
                 {saving
                   ? t("common.saving")
                   : product
-                    ? t("common.saveChanges")
+                    ? t("admin.saveAndPublish")
                     : t("admin.addProduct")}
               </Button>
             </div>
@@ -910,6 +943,7 @@ function buildVariantPayload(row: VariantRow) {
   return {
     title: row.title.trim(),
     value: row.value.trim(),
+    sku: row.sku.trim() || undefined,
     priceCents:
       Number.isFinite(price) && price > 0 ? Math.round(price * 100) : undefined,
     stock: Number.isFinite(stock) && stock > 0 ? stock : undefined,

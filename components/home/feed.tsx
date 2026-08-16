@@ -72,7 +72,10 @@ export function Feed() {
   const { t } = useI18n()
   const { data, isLoading, error } = clientDb.useQuery({
     products: {
-      $: { order: { createdAt: "desc" } },
+      $: {
+        order: { createdAt: "desc" },
+        where: { status: { $ne: "draft" } },
+      },
       image: {},
       gallery: {},
       variants: {},
