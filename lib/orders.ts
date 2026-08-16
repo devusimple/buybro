@@ -101,3 +101,28 @@ export async function placeOrder({
     return { ok: false, error: "checkout.placeError" }
   }
 }
+
+export async function updateOrderStatus({
+  user,
+  orderId,
+  status,
+}: {
+  user: User
+  orderId: string
+  status: string
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const response = await fetch("/api/orders/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        refreshToken: user.refresh_token,
+        orderId,
+        status,
+      }),
+    })
+    return await response.json()
+  } catch {
+    return { ok: false, error: "admin.updateError" }
+  }
+}

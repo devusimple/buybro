@@ -4,6 +4,7 @@ import { useState } from "react"
 import { ShoppingCart } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -11,6 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyDescription,
@@ -33,8 +42,12 @@ import type { AdminOrder, AdminProfile } from "@/lib/admin"
 import { clientDb } from "@/lib/clientDb"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
-import { notifyOrderStatus } from "@/lib/notifications"
-import { isOrderStatus, ORDER_STATUSES, STATUS_VARIANTS } from "@/lib/orders"
+import {
+  isOrderStatus,
+  ORDER_STATUSES,
+  STATUS_VARIANTS,
+  updateOrderStatus,
+} from "@/lib/orders"
 import { cn } from "@/lib/utils"
 
 function statusLabel(t: ReturnType<typeof useI18n>["t"], status: string) {
@@ -61,8 +74,11 @@ function paymentLabel(
 
 export default function AdminOrdersPage() {
   const { t, locale } = useI18n()
+  const { user } = clientDb.useAuth()
   const [filter, setFilter] = useState<string>("all")
   const [error, setError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<AdminOrder | null>(null)
 
   const { data, isLoading } = clientDb.useQuery({
     orders: {
@@ -90,24 +106,34 @@ export default function AdminOrdersPage() {
     return order.ownerId.slice(0, 8).toUpperCase()
   }
 
-  async function handleStatusChange(order: AdminOrder, value: string) {
-    if (!isOrderStatus(value) || value === order.status) {
+  async function runStatusChange(order: AdminOrder, value: string) {
+    if (!isOrderStatus(value) || !user || value === order.status) {
       return
     }
     setError(null)
+    setBusyId(order.id)
     try {
-      const txs: unknown[] = [
-        clientDb.tx.orders[order.id].update({ status: value }),
-        notifyOrderStatus({
-          ownerId: order.ownerId,
-          orderId: order.id,
-          status: value,
-        }),
-      ]
-      await clientDb.transact(txs as Parameters<typeof clientDb.transact>[0])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("admin.updateError"))
+      const result = await updateOrderStatus({
+        user,
+        orderId: order.id,
+        status: value,
+      })
+      if (!result.ok) {
+        setError(
+          t((result.error ?? "admin.updateError") as Parameters<typeof t>[0])
+        )
+      }
+    } finally {
+      setBusyId(null)
     }
+  }
+
+  function handleStatusChange(order: AdminOrder, value: string) {
+    if (isOrderStatus(value) && value === "cancelled") {
+      setCancelTarget(order)
+      return
+    }
+    runStatusChange(order, value)
   }
 
   return (
@@ -226,6 +252,54 @@ export default function AdminOrdersPage() {
                         ))}
                       </div>
 
+                      {(order.shippingFullName ||
+                        order.shippingArea ||
+                        order.ownerEmail) && (
+                        <div className="grid gap-3 text-xs text-muted-foreground sm:grid-cols-2">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold tracking-widest uppercase">
+                              {t("admin.contact")}
+                            </span>
+                            {order.shippingFullName && (
+                              <span>
+                                {order.shippingFullName}
+                                {order.shippingPhone
+                                  ? ` · ${order.shippingPhone}`
+                                  : ""}
+                              </span>
+                            )}
+                            {order.ownerEmail && (
+                              <span>{order.ownerEmail}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold tracking-widest uppercase">
+                              {t("admin.shipTo")}
+                            </span>
+                            {order.shippingHouseNo && (
+                              <span>
+                                {[
+                                  order.shippingHouseNo,
+                                  order.shippingRoad,
+                                  order.shippingArea,
+                                ]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                                {order.shippingDistrict
+                                  ? `, ${order.shippingDistrict}`
+                                  : ""}
+                                {order.shippingPostalCode
+                                  ? ` ${order.shippingPostalCode}`
+                                  : ""}
+                                {order.shippingDivision
+                                  ? `, ${order.shippingDivision}`
+                                  : ""}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
                         <span className="text-xs text-muted-foreground">
                           {itemCount === 1
@@ -238,6 +312,7 @@ export default function AdminOrdersPage() {
                           </span>
                           <Select
                             value={order.status}
+                            disabled={busyId === order.id}
                             onValueChange={(value) => {
                               if (value !== null && isOrderStatus(value)) {
                                 handleStatusChange(order, value)
@@ -277,6 +352,46 @@ export default function AdminOrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelTarget(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("admin.cancelOrderTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("admin.cancelOrderConfirm", {
+                id: cancelTarget?.id.slice(0, 8).toUpperCase() ?? "",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelTarget(null)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelTarget !== null && busyId === cancelTarget.id}
+              onClick={() => {
+                const target = cancelTarget
+                if (target) {
+                  setCancelTarget(null)
+                  runStatusChange(target, "cancelled")
+                }
+              }}
+            >
+              {cancelTarget !== null && busyId === cancelTarget.id
+                ? t("admin.cancelling")
+                : t("admin.cancelOrder")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

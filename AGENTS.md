@@ -39,6 +39,7 @@ Fully functional storefront + admin, not a boilerplate. Storefront: home feed, s
 - **API routes** (`app/api/`), all Node runtime:
   - `POST /api/instant` — Instant first-party handler (`createInstantRouteHandler`). Client Instant calls go through here (see `lib/clientDb.ts`).
   - `POST /api/checkout` — server-side order placement with the **admin SDK**: verifies the refresh token, validates items/quantities against live stock, applies coupons, computes totals, decrements stock, writes `orders` + `orderItems` + `couponUsages` + a notification. Client can never write orders directly.
+  - `POST /api/orders/status` — the only path for order status changes. Verifies the refresh token, enforces a forward-only status machine (admins) or owner-only cancellation (pending/confirmed), restores product/variant stock and releases `couponUsages` when cancelling, and writes a notification. `orders.update` perm is `false` for all clients.
   - `POST /api/reviews` — server-side review creation with the admin SDK: validates rating (1–5) and media, links review media, recomputes the product's `rating`/`reviewCount`.
 
 ## Data layer — InstantDB

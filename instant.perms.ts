@@ -78,17 +78,16 @@ const rules = {
       // Orders are created by the server checkout endpoint (admin SDK),
       // never by end users directly.
       create: "isAdmin",
-      // Buyers may only cancel; everything else (status, totals, shipping)
-      // is a server/admin write.
-      update: "isAdmin || (isOwner && onlyStatusCancel)",
+      // All status changes (including cancellation) go through
+      // POST /api/orders/status so stock restore, transition validation,
+      // coupon release, and notifications stay server-side.
+      update: "false",
       delete: "isAdmin",
     },
     bind: {
       isOwner: "auth.id == data.ownerId",
       isAdmin: "'admin' in auth.ref('$user.roles.type')",
       isEmailMatch: "data.ownerEmail in auth.ref('$user.email')",
-      onlyStatusCancel:
-        "request.modifiedFields.all(field, field in ['status']) && newData.status == 'cancelled'",
     },
   },
   orderItems: {

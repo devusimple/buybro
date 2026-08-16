@@ -30,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { clientDb } from "@/lib/clientDb"
 import { formatPrice } from "@/lib/format"
 import { useI18n } from "@/lib/i18n"
-import { STATUS_ORDER, STATUS_VARIANTS } from "@/lib/orders"
+import { STATUS_ORDER, STATUS_VARIANTS, updateOrderStatus } from "@/lib/orders"
 import { cn } from "@/lib/utils"
 
 function paymentLabel(
@@ -140,13 +140,22 @@ export default function OrderDetailPage() {
     setCancelling(true)
     setCancelError(null)
     try {
-      await clientDb.transact(
-        clientDb.tx.orders[orderId].update({ status: "cancelled" })
-      )
-    } catch (err) {
-      setCancelError(
-        err instanceof Error ? err.message : t("orderDetail.cancelError")
-      )
+      const result = await updateOrderStatus({
+        user: user!,
+        orderId,
+        status: "cancelled",
+      })
+      if (!result.ok) {
+        setCancelError(
+          t(
+            (result.error ?? "orderDetail.cancelError") as Parameters<
+              typeof t
+            >[0]
+          )
+        )
+      }
+    } catch {
+      setCancelError(t("orderDetail.cancelError"))
     } finally {
       setCancelling(false)
     }
