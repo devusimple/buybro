@@ -33,8 +33,9 @@ type ReviewWithMedia = InstaQLEntity<AppSchema, "reviews", { media: {} }>
 type ProductFaq = InstaQLEntity<AppSchema, "productFaqs">
 /* eslint-enable @typescript-eslint/no-empty-object-type */
 
-function isVideoFile(file: { url: string }) {
-  return /\.(mp4|webm|mov|ogg|m4v)$/i.test(file.url)
+function isVideoFile(file: { url: string; path?: string }) {
+  const src = (file.path || file.url).split(/[?#]/)[0]
+  return /\.(mp4|webm|mov|ogg|m4v)$/i.test(src)
 }
 
 function ProductView({ slug }: { slug: string }) {

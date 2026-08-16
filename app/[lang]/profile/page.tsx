@@ -69,6 +69,17 @@ function ProfileDashboard({ user }: { user: User }) {
         <p className="text-sm leading-relaxed text-muted-foreground">
           {t("profile.description")}
         </p>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+          <span className="font-medium text-foreground">
+            {profile?.displayName || user.email?.split("@")[0] || user.email}
+          </span>
+          {profile?.phone && (
+            <span className="text-muted-foreground">{profile.phone}</span>
+          )}
+          {user.email && (
+            <span className="text-muted-foreground">{user.email}</span>
+          )}
+        </div>
       </header>
 
       <OrdersSection user={user} />

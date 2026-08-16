@@ -115,12 +115,13 @@ export async function POST(request: Request) {
       verified: hasPurchased || undefined,
       createdAt: Date.now(),
     })
-    .link({ product: productId, author: user.id })
-
-  const link = Array.isArray(mediaIds) && mediaIds.length > 0
-  if (link) {
-    chunk.link({ media: mediaIds as string[] })
-  }
+    .link({
+      product: productId,
+      author: user.id,
+      ...(Array.isArray(mediaIds) && mediaIds.length > 0
+        ? { media: mediaIds as string[] }
+        : {}),
+    })
 
   try {
     await adminDb.transact([

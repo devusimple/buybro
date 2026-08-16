@@ -26,6 +26,7 @@ export function ReviewForm({
 }) {
   const { t } = useI18n()
   const [name, setName] = useState(user?.email?.split("@")[0] ?? "")
+  const [nameTouched, setNameTouched] = useState(false)
   const [email, setEmail] = useState(user?.email ?? "")
   const [reviewRating, setReviewRating] = useState(5)
   const [comment, setComment] = useState("")
@@ -34,6 +35,12 @@ export function ReviewForm({
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mediaRef = useRef<HTMLInputElement>(null)
+
+  const { data: profileData } = clientDb.useQuery({
+    profiles: { $: { where: { ownerId: user.id } } },
+  })
+  const profileName = profileData?.profiles?.[0]?.displayName
+  const effectiveName = nameTouched || !profileName ? name : profileName
 
   function handleMediaFiles(selected: FileList | null) {
     const uploads = Array.from(selected ?? []).map((file) => ({
@@ -85,7 +92,7 @@ export function ReviewForm({
           productId,
           rating: reviewRating,
           comment,
-          authorName: name.trim(),
+          authorName: effectiveName.trim(),
           authorEmail: email.trim() || undefined,
           mediaIds,
         }),
@@ -134,8 +141,11 @@ export function ReviewForm({
           <Input
             id="review-name"
             required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+            value={effectiveName}
+            onChange={(event) => {
+              setName(event.target.value)
+              setNameTouched(true)
+            }}
             placeholder={t("product.reviewNamePlaceholder")}
           />
         </Field>
