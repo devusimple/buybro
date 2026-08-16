@@ -50,7 +50,7 @@ export function ProductCard({ product }: { product: Product }) {
         productId={product.id}
         className="absolute top-2 right-2 z-10"
       />
-      <Card size="sm" className="h-full">
+      <Card size="sm" className="h-full p-0">
         <Link
           href={`/${locale}/products/${product.slug}`}
           aria-label={product.name}
